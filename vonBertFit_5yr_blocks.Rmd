@@ -1,0 +1,197 @@
+---
+title: "Randomized vonBertalanffy"
+output: html_notebook
+---
+
+The pre and post 2015 growth analysis showed a significant difference between the two time periods. So, I'm wondering if there was some arbitrary error crept into it.  Here, I test that possibility by taking different blocks of 5 year periods to see if the estimated growth coefficients are lower because of the duration of the dataset. 
+
+Bring in data:
+```{r}
+
+rm(list=ls())
+library(jagsUI)
+library(tidyverse)
+library(lubridate)
+library(reshape)
+library(bayesplot)
+library(ggridges)
+
+save.rds <- TRUE
+
+source("Cm_Howicks_functions.R")
+
+# I only use random Linf and random k model for this
+MCMC.params <- list(model.file = "models/Model_RlinfRk_L.txt",
+                    n.chains = 3,
+                    n.samples = 100000,
+                    n.burnin = 60000,
+                    n.thin = 5)
+
+dat.1 <- get.data("data/juve_Cm_v3_2019.csv")
+
+n.cap.ID <- table(dat.1$ID)
+recap.ID <- data.frame(n.cap.ID[n.cap.ID > 1])
+colnames(recap.ID) <- c("ID", "Freq")
+
+recap.ID %>% left_join(dat.1, by = "ID") -> recap.data
+
+```
+
+
+Make length and capture date matrices
+```{r}
+unique.ID <- recap.ID$ID
+size.mat <- date.mat <- matrix(nrow = length(unique.ID),
+                              ncol = max(recap.data$Freq))
+
+date.1 <- structure(numeric(length(unique.ID)), class = "Date")
+n.vec <- vector(mode = "numeric", length = length(unique.ID))
+
+k <- 1
+for (k in 1:length(unique.ID)){
+  tmp.ID <- filter(recap.data, ID == unique.ID[k])
+  size.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$CCL
+  date.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$DATE - min(tmp.ID$DATE)
+  date.1[k] <- min(tmp.ID$DATE)
+  n.vec[k] <- nrow(tmp.ID)
+}
+
+date.mat <- date.mat[, 2:ncol(date.mat)]/365
+```
+
+Split into two groups; this is the true difference. 
+
+Next, try to find growth rates between early years and the last 5 years. 
+Pull out CCL and date:
+```{r}
+
+recap.pre2015 <- extract.time.block(dat.1, 
+                                       end.date = "2015-01-01")
+recap.post2015 <- extract.time.block(dat.1, 
+                                       begin.date = "2015-01-01")
+
+```
+
+These original ones should have been run but make sure. 
+
+
+```{r}
+parameters =  c('CV', 'k', 'A', 
+                'Linf', 'LinfMu', 'LinfSD', 
+                'Shape', 'rate', #'kAlpha', 'kBeta', 
+                'deviance')
+if (!file.exists( "RData/Rlinf_Rk_pre2015.rds")){
+  jm.pre <- fit.vonBert(parameters = parameters,
+                      MCMC.params = MCMC.params,
+                      jags.data = list(nIndiv = length(recap.pre2015$ID),
+                                       n = recap.pre2015$n,
+                                       L = recap.pre2015$size,
+                                       t = recap.pre2015$date),
+                      save = TRUE, 
+                      filename = "RData/Rlinf_Rk_pre2015.rds")
+  
+} else {
+  jm.pre <- readRDS(file = "RData/Rlinf_Rk_pre2015.rds")
+}
+
+k.pre2015 <- extract.posterior("k", jm.pre$samples)
+k.pre2015.stats <- data.frame(q50 = apply(k.pre2015, 
+                                          MARGIN = 2, 
+                                          FUN = median),
+                              q2.5 = apply(k.pre2015,
+                                           MARGIN = 2,
+                                           FUN = quantile, 0.025),
+                              q97.5 = apply(k.pre2015,
+                                            MARGIN = 2,
+                                            FUN = quantile, 0.975))
+
+
+if (!file.exists( "RData/Rlinf_Rk_post2015.rds")){
+  jm.post <- fit.vonBert(parameters = parameters,
+                         MCMC.params = MCMC.params,
+                         jags.data = list(nIndiv = length(recap.post2015$ID),
+                                          n = recap.post2015$n,
+                                          L = recap.post2015$size,
+                                          t = recap.post2015$date),
+                         save = TRUE, 
+                         filename = "RData/Rlinf_Rk_post2015.rds")
+  
+} else {
+  jm.post <- readRDS(file = "RData/Rlinf_Rk_post2015.rds")
+}
+
+k.post2015 <- extract.posterior("k", jm.post$samples)
+k.post2015.stats <- data.frame(q50 = apply(k.post2015, 
+                                           MARGIN = 2, 
+                                           FUN = median),
+                               q2.5 = apply(k.post2015,
+                                            MARGIN = 2,
+                                            FUN = quantile, 0.025),
+                               q97.5 = apply(k.post2015,
+                                             MARGIN = 2,
+                                             FUN = quantile, 0.975))
+
+```
+
+Now I select different time blocks of 5 observation years - not necessarily 5 years. No recaptures from years before 2004. So, we just look at only years from 2004. 
+
+```{r}
+dat.1 %>% filter(YEAR > 2003) -> dat.2
+uniq.years <- sort(unique(dat.2$YEAR))
+n.blocks <- length(uniq.years) - 5 + 1
+
+k.stats <- list()
+k <- 1
+for (k in 1:n.blocks){
+  begin.date <- paste0(uniq.years[k], "-01-01")
+  end.date <-  paste0(uniq.years[k+4], "-12-31")
+  recap <- extract.time.block(dat.2, 
+                              begin.date = begin.date,
+                              end.date = end.date)
+  
+  out.filename <-  paste0("RData/Rlinf_Rk_", begin.date, "_", end.date, ".rds")
+  
+  if (!file.exists(out.filename)){
+    jm <- fit.vonBert(parameters = parameters,
+                          MCMC.params = MCMC.params,
+                          jags.data = list(nIndiv = length(recap$ID),
+                                           n = recap$n,
+                                           L = recap$size,
+                                           t = recap$date),
+                          save = TRUE, 
+                          filename = out.filename)
+    
+  } else {
+    jm <- readRDS(file = out.filename)
+  }
+  
+  k.jm <- extract.posterior("k", jm$samples)
+  k.stats[[k]] <- data.frame(q50 = apply(k.jm, 
+                                         MARGIN = 2, 
+                                         FUN = median),
+                             q2.5 = apply(k.jm,
+                                          MARGIN = 2,
+                                          FUN = quantile, 0.025),
+                             q97.5 = apply(k.jm,
+                                           MARGIN = 2,
+                                           FUN = quantile, 0.975),
+                             time = paste0(uniq.years[k], "-", uniq.years[k+4]))
+  
+}
+```
+
+Then, plot them by date
+```{r}
+
+k.stats.df <- do.call(rbind, k.stats)
+
+ggplot(data = k.stats.df) + 
+  geom_density_ridges2(aes(y = time, x = q50),
+                       fill = "red")
+
+```
+
+Because of the small sample size of 2004-2008, I would not trust the result there. The change from 2008-2017 to 2014-2018 is quite large... but the density plot for 2008-2017 is not great.  
+
+
+

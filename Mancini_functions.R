@@ -48,6 +48,8 @@ get.data <- function(filename){
               weight_kg = weight_kg,
               sex = sex)-> dat.1
   
+  dat.1[dat.1$species == "In", "species"] <- "Cm"
+  
   return(dat.1)
 }
 

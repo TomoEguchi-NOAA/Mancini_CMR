@@ -18,7 +18,7 @@ library(ggridges)
 library(RMark)
 library(R2ucare)
 
-source("Mancini_Cm_functions.R")
+source("Mancini_functions.R")
 
 do_analysis=function()
 {

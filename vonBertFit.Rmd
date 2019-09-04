@@ -17,7 +17,7 @@ library(ggridges)
 
 save.rds <- TRUE
 
-source("Mancini_Cm_functions.R")
+source("Mancini_functions.R")
 
 # MCMC.params <- list(   n.chains = 3,
 #                        n.samples = 50000,
@@ -27,7 +27,7 @@ source("Mancini_Cm_functions.R")
 dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
 # Lo doesn't have enough (>2) recaptures. 
-spp <- c("Cm", "Ei", "In") #unique(dat.1$species)
+spp <- c("Cm", "Ei") #unique(dat.1$species)
 
 MCMC.params <- list(n.chains = 3,
                     n.samples = 100000,

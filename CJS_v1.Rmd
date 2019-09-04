@@ -17,7 +17,7 @@ library(bayesplot)
 library(ggridges)
 
 
-source("Mancini_Cm_functions.R")
+source("Mancini_functions.R")
 
 MCMC.params <- list(   n.chains = 3,
                        n.samples = 50000,
@@ -30,7 +30,7 @@ Bring in the data file and get ready for CJS
 
 ```{r}
 dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
-spp <- c("Cm", "Ei", "In", "Lo") #unique(dat.1$species)
+spp <- c("Cm", "Ei") #unique(dat.1$species)
 
 MCMC.params <- list(n.chains = 3,
                     n.samples = 100000,

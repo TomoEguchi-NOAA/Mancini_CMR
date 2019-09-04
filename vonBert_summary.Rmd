@@ -118,3 +118,93 @@ ggplot() +
   theme(legend.position = "none")
 ```
 
+
+Then hawksbills:
+```{r}
+jags.data <- vonBert.jags.data(dat.1, "Ei")
+
+jm.RLinf_Rk.Ei <- readRDS("RData/Rlinf_Rk_Ei.rds")
+jm.RLinf_Fk.Ei <- readRDS("RData/Rlinf_Fk_Ei.rds")
+jm.FLinf_Rk.Ei <- readRDS("RData/Flinf_Rk_Ei.rds")
+jm.FLinf_Fk.Ei <- readRDS("RData/Flinf_Fk_Ei.rds")
+
+DICs <- c(jm.RLinf_Rk.Ei$DIC, jm.RLinf_Fk.Ei$DIC, jm.FLinf_Rk.Ei$DIC, jm.FLinf_Fk.Ei$DIC)
+DICs
+```
+
+Although, the usefulness of DIC has been questioned, random Linf and fixed k parameter model was considered best for green turtles.  Take a look at some posteriors to see if convergence was okay.  According to the Rhat statistics, they were okay.
+
+```{r}
+mcmc_trace(jm.RLinf_Fk.Ei$samples, c("Linf", "k", "Shape", "rate"))
+```
+
+They look okay. 
+
+
+```{r}
+mcmc_dens(jm.RLinf_Fk.Ei$samples, c("Linf", "Shape", "rate", "k"))
+```
+
+
+Next, I plot the fitted von Bertalanffy function. 
+```{r}
+Linf <- jm.FLinf_Fk.Cm$q50$Linf
+k <- jm.FLinf_Fk.Cm$q50$k
+A <- jm.FLinf_Fk.Cm$q50$A
+
+Linf.lo <- jm.FLinf_Fk.Cm$q2.5$Linf
+k.lo <- jm.FLinf_Fk.Cm$q2.5$k
+A.lo <- jm.FLinf_Fk.Cm$q2.5$A
+
+Linf.hi <- jm.FLinf_Fk.Cm$q97.5$Linf
+k.hi <- jm.FLinf_Fk.Cm$q97.5$k
+A.hi <- jm.FLinf_Fk.Cm$q97.5$A
+
+time.vec <- 0:59
+
+unique.ID <- jags.data$ID
+
+time.mat <- L_Exp <- L_Exp.lo <- L_Exp.hi <- matrix(ncol = length(unique.ID), nrow = length(time.vec))
+
+i <- 1
+for (i in 1:length(unique.ID)){
+  L_Exp[,i] <-  Linf * (1.0 - exp(-k * (A[i] + time.vec)))
+  L_Exp.lo[,i] <-  Linf.lo * (1.0 - exp(-k * (A[i] + time.vec)))
+  L_Exp.hi[,i] <-  Linf.hi * (1.0 - exp(-k * (A[i] + time.vec)))
+  
+  time.mat[,i] <- A[i] + time.vec
+}
+
+colnames(L_Exp) <- unique.ID
+L_Exp_long <- melt(L_Exp)
+colnames(L_Exp_long) <- c("time1", "ID", "CCL")
+
+colnames(L_Exp.lo) <- unique.ID
+L_Exp.lo_long <- melt(L_Exp.lo)
+colnames(L_Exp.lo_long) <- c("time1", "ID", "CCL")
+
+colnames(L_Exp.hi) <- unique.ID
+L_Exp.hi_long <- melt(L_Exp.hi)
+colnames(L_Exp.hi_long) <- c("time1", "ID", "CCL")
+
+colnames(time.mat) <- unique.ID
+time_long <- melt(time.mat)
+colnames(time_long) <- c("time1", "ID", "Years")
+
+L_Exp_long$Years <- time_long$Years
+L_Exp.lo_long$Years <- time_long$Years
+L_Exp.hi_long$Years <- time_long$Years
+
+ggplot() + 
+  geom_path(data = L_Exp_long,
+            aes(x = Years, y = CCL, color = ID)) +
+  geom_path(data = L_Exp.lo_long,
+            aes(x = Years, y = CCL, color = ID),
+            linetype = 2) +
+  geom_path(data = L_Exp.hi_long,
+            aes(x = Years, y = CCL, color = ID),
+            linetype = 2) +
+  
+  theme(legend.position = "none")
+```
+

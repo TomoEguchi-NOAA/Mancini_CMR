@@ -26,157 +26,61 @@ source("Mancini_Cm_functions.R")
 
 dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
-```
+# Lo doesn't have enough (>2) recaptures. 
+spp <- c("Cm", "Ei", "In") #unique(dat.1$species)
 
-Find those that were captured more than once:
-
-```{r}
-n.cap.ID <- table(dat.1$ID)
-recap.ID <- data.frame(n.cap.ID[n.cap.ID > 1])
-colnames(recap.ID) <- c("ID", "Freq")
-
-recap.ID %>% left_join(dat.1, by = "ID") -> recap.data
-```
-
-Make length and capture date matrices
-```{r}
-unique.ID <- recap.ID$ID
-size.mat <- date.mat <- matrix(nrow = length(unique.ID),
-                              ncol = max(recap.data$Freq))
-
-date.1 <- structure(numeric(length(unique.ID)), class = "Date")
-n.vec <- vector(mode = "numeric", length = length(unique.ID))
-
-k <- 1
-for (k in 1:length(unique.ID)){
-  tmp.ID <- filter(recap.data, ID == unique.ID[k])
-  size.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$CCL
-  date.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$DATE - min(tmp.ID$DATE)
-  date.1[k] <- min(tmp.ID$DATE)
-  n.vec[k] <- nrow(tmp.ID)
-}
-
-date.mat <- date.mat[, 2:ncol(date.mat)]/365
-```
-
-Then, send this to jags with a couple models.
-
-```{r}
-MCMC.params <- list(model.file = "models/Model_RlinfRk_L.txt",
-                    n.chains = 3,
+MCMC.params <- list(n.chains = 3,
                     n.samples = 100000,
                     n.burnin = 60000,
                     n.thin = 5)
 
-if (!file.exists( "RData/Rlinf_Rk_L.rds")){
-  parameters <- c('CV', 'k', 'A', 
-                  'Linf', 'LinfMu', 'LinfSD', 
-                  'Shape', 'rate', #'kAlpha', 'kBeta', 
-                  'deviance')
+```
+
+Find those that were captured more than once: (or better to use more than twice since the dataset is so big?)
+
+```{r}
+for (s in 1:length(spp)){
+  # remove rows with is.na(CCL) is true:
+  dat.1 %>% filter(species == spp[s]) %>%
+    filter(!is.na(CCL)) -> dat.2
   
-  jags.data <- list(nIndiv = length(unique.ID),
-                    n = n.vec,
-                    L = size.mat,
-                    t = date.mat)
+  n.cap.ID <- table(dat.2$ID)
+  recap.ID <- data.frame(n.cap.ID[n.cap.ID > 2])
+  colnames(recap.ID) <- c("ID", "Freq")
   
-  initsFunction <- function(d){
-    #kAlpha <- runif(1, 0, 10)
-    #kBeta <- runif(1, 0, 10)
-    k <- rbeta(length(unique.ID), 1, 1)
-    CV <- rbeta(1, 1, 1)
-    Shape <- runif(1, 0, 10)
-    rate <- runif(1, 0, 10)
-    LinfMu <- runif(1, 90, 200)
-    LinfTau <- rgamma(1, 1, 1)
-    A <- list(k = k, CV = CV,
-              Shape = Shape, rate = rate)
-    return(A)
+  recap.ID %>% left_join(dat.2, by = "ID") -> recap.data
+  
+  # Make length and capture date matrices
+  unique.ID <- recap.ID$ID
+  size.mat <- date.mat <- matrix(nrow = length(unique.ID),
+                                 ncol = max(recap.data$Freq))
+  
+  date.1 <- structure(numeric(length(unique.ID)), class = "Date")
+  n.vec <- vector(mode = "numeric", length = length(unique.ID))
+  
+  k <- 1
+  for (k in 1:length(unique.ID)){
+    tmp.ID <- filter(recap.data, ID == unique.ID[k])
+    size.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$CCL
+    date.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$DATE - min(tmp.ID$DATE)
+    date.1[k] <- min(tmp.ID$DATE)
+    n.vec[k] <- nrow(tmp.ID)
   }
   
-  # Create a list of length nChains with z in initsFunction
-  #inList <- list(CH, f)
-  inits <- lapply(c(1:MCMC.params$n.chains), initsFunction)
-  
-  jm.1 <- jags(data = jags.data,
-               #inits = inits,
-               parameters.to.save= parameters,
-               model.file = MCMC.params$model.file,
-               n.chains = MCMC.params$n.chains,
-               n.burnin = MCMC.params$n.burnin,
-               n.thin = MCMC.params$n.thin,
-               n.iter = MCMC.params$n.samples,
-               DIC = T, 
-               parallel=T)
-  
-  if(save.rds) saveRDS(jm.1, file = "RData/Rlinf_Rk_L.rds")
-  
-} else {
-  jm.1 <- readRDS(file = "RData/Rlinf_Rk_L.rds")
-}
-
-```
-
-look at the posterior;
-
-```{r}
-mcmc_trace(jm.1$samples, c("LinfMu"))
-mcmc_dens(jm.1$samples, c("LinfMu"))
-
-```
-
-```{r}
-mcmc_trace(jm.1$samples, c("CV"))
-mcmc_dens(jm.1$samples, c("CV"))
-
-```
-
-Plot what we found
-```{r}
-Linf <- jm.1$q50$Linf
-k <- jm.1$q50$k
-A <- jm.1$q50$A
-time.vec <- 0:49
-
-time.mat <- L_Exp <- matrix(ncol = length(unique.ID), nrow = length(time.vec))
-
-i <- 1
-for (i in 1:length(unique.ID)){
-  L_Exp[,i] <-  Linf[i] * (1.0 - exp(-k[i] * (A[i] + time.vec)))
-  time.mat[,i] <- A[i] + time.vec
-}
-
-colnames(L_Exp) <- unique.ID
-L_Exp_long <- melt(L_Exp)
-colnames(L_Exp_long) <- c("time1", "ID", "CCL")
-
-colnames(time.mat) <- unique.ID
-time_long <- melt(time.mat)
-colnames(time_long) <- c("time1", "ID", "Years")
-
-L_Exp_long$Years <- time_long$Years
-
-ggplot(data = L_Exp_long) + 
-  geom_path(aes(x = Years, y = CCL, color = ID)) +
-  theme(legend.position = "none")
-```
-
-The model seems to fit fine. Some turtles just got adult sizes. 
-
-I also want to run fixed k model
-```{r}
-if (!file.exists( "RData/Rlinf_Fk.rds")){
-  MCMC.params$model.file <- "models/Model_Rlinf_Fk.txt"
-  parameters <- c('CV', 'k', 'A', 
-                  'Linf', 'LinfMu', 'LinfSD', 
-                  'Shape', 'rate', #'kAlpha', 'kBeta', 
-                  'deviance')
+  date.mat <- date.mat[, 2:ncol(date.mat)]/365
   
   jags.data <- list(nIndiv = length(unique.ID),
                     n = n.vec,
                     L = size.mat,
                     t = date.mat)
   
-  jm.2 <- jags(data = jags.data,
+  MCMC.params$model.file <-  "models/Model_RlinfRk_L.txt"
+  if (!file.exists(paste0("RData/Rlinf_Rk_", spp[s], ".rds"))){
+    parameters <- c('CV', 'k', 'A', 
+                    'Linf', 'LinfMu', 'LinfSD', 
+                    'Shape', 'rate', #'kAlpha', 'kBeta', 
+                    'deviance')
+    jm.1 <- jags(data = jags.data,
                #inits = inits,
                parameters.to.save= parameters,
                model.file = MCMC.params$model.file,
@@ -187,39 +91,41 @@ if (!file.exists( "RData/Rlinf_Fk.rds")){
                DIC = T, 
                parallel=T)
   
-  if(save.rds) saveRDS(jm.2, file = "RData/Rlinf_Fk.rds")
+  if(save.rds) saveRDS(jm.1, file = paste0("RData/Rlinf_Rk_", spp[s], ".rds"))
   
-} else {
-  jm.2 <- readRDS(file = "RData/Rlinf_Fk.rds")
-}
-```
+  } 
 
-
-```{r}
-mcmc_trace(jm.2$samples, c("k"))
-mcmc_dens(jm.2$samples, c("k"))
-
-```
-
-These don't look so good... 
-
-Fixed Linf and fixed k:
-
-```{r}
-if (!file.exists( "RData/Flinf_Fk.rds")){
-  MCMC.params$model.file <- "models/Model_Flinf_Fk.txt"
-  parameters <- c('CV', 'k', 'A', 
-                  'Linf',  
-                  'Shape', 'rate', #'kAlpha', 'kBeta', 
-                  'deviance')
+  if (!file.exists(paste0("RData/Rlinf_Fk_", spp[s], ".rds"))){
+    MCMC.params$model.file <- "models/Model_Rlinf_Fk.txt"
+    parameters <- c('CV', 'k', 'A', 
+                    'Linf', 'LinfMu', 'LinfSD', 
+                    'Shape', 'rate', #'kAlpha', 'kBeta', 
+                    'deviance')
+    
+    jm.2 <- jags(data = jags.data,
+                 #inits = inits,
+                 parameters.to.save= parameters,
+                 model.file = MCMC.params$model.file,
+                 n.chains = MCMC.params$n.chains,
+                 n.burnin = MCMC.params$n.burnin,
+                 n.thin = MCMC.params$n.thin,
+                 n.iter = MCMC.params$n.samples,
+                 DIC = T, 
+                 parallel=T)
+    
+    if(save.rds) saveRDS(jm.2, file = paste0("RData/Rlinf_Fk_", spp[s], ".rds"))
+    
+  } 
   
-  jags.data <- list(nIndiv = length(unique.ID),
-                    n = n.vec,
-                    L = size.mat,
-                    t = date.mat)
-  
-  jm.3 <- jags(data = jags.data,
-               #inits = inits,
+  if (!file.exists(paste0("RData/Flinf_Fk_", spp[s], ".rds"))){
+    MCMC.params$model.file <- "models/Model_Flinf_Fk.txt"
+    parameters <- c('CV', 'k', 'A', 
+                    'Linf',  
+                    'Shape', 'rate', #'kAlpha', 'kBeta', 
+                    'deviance')
+    
+    jm.3 <- jags(data = jags.data,
+                 #inits = inits,
                parameters.to.save= parameters,
                model.file = MCMC.params$model.file,
                n.chains = MCMC.params$n.chains,
@@ -229,74 +135,32 @@ if (!file.exists( "RData/Flinf_Fk.rds")){
                DIC = T, 
                parallel=T)
   
-  if(save.rds) saveRDS(jm.3, file = "RData/Flinf_Fk.rds")
+    if(save.rds) saveRDS(jm.3, file = paste0("RData/Flinf_Fk_", spp[s], ".rds"))
+    
+  } 
   
-} else {
-  jm.3 <- readRDS(file = "RData/Flinf_Fk.rds")
+  if (!file.exists(paste0("RData/Flinf_Rk_", spp[s], ".rds"))){
+    MCMC.params$model.file <- "models/Model_Flinf_Rk.txt"
+    parameters <- c('CV', 'k', 'A', 
+                    'Linf',  
+                    'Shape', 'rate', #'kAlpha', 'kBeta', 
+                    'deviance')
+    
+    jm.4 <- jags(data = jags.data,
+                 #inits = inits,
+                 parameters.to.save= parameters,
+                 model.file = MCMC.params$model.file,
+                 n.chains = MCMC.params$n.chains,
+                 n.burnin = MCMC.params$n.burnin,
+                 n.thin = MCMC.params$n.thin,
+                 n.iter = MCMC.params$n.samples,
+                 DIC = T, 
+                 parallel=T)
+    
+    if(save.rds) saveRDS(jm.4, file = paste0("RData/Flinf_Rk_", spp[s], ".rds"))
+    
+  } 
 }
-```
-
-
-
-
-
-```{r}
-mcmc_trace(jm.3$samples, c("k"))
-mcmc_dens(jm.3$samples, c("k"))
 
 ```
 
-
-
-
-```{r}
-mcmc_trace(jm.3$samples, c("Linf"))
-mcmc_dens(jm.3$samples, c("Linf"))
-
-```
-
-
-
-
-Fixed Linf and random k:
-
-```{r}
-if (!file.exists( "RData/Flinf_Rk.rds")){
-  MCMC.params$model.file <- "models/Model_Flinf_Rk.txt"
-  parameters <- c('CV', 'k', 'A', 
-                  'Linf',  
-                  'Shape', 'rate', #'kAlpha', 'kBeta', 
-                  'deviance')
-  
-  jags.data <- list(nIndiv = length(unique.ID),
-                    n = n.vec,
-                    L = size.mat,
-                    t = date.mat)
-  
-  jm.4 <- jags(data = jags.data,
-               #inits = inits,
-               parameters.to.save= parameters,
-               model.file = MCMC.params$model.file,
-               n.chains = MCMC.params$n.chains,
-               n.burnin = MCMC.params$n.burnin,
-               n.thin = MCMC.params$n.thin,
-               n.iter = MCMC.params$n.samples,
-               DIC = T, 
-               parallel=T)
-  
-  if(save.rds) saveRDS(jm.4, file = "RData/Flinf_Rk.rds")
-  
-} else {
-  jm.4 <- readRDS(file = "RData/Flinf_Rk.rds")
-}
-```
-
-
-
-
-
-```{r}
-mcmc_trace(jm.4$samples, c("Linf"))
-mcmc_dens(jm.4$samples, c("Linf"))
-
-```

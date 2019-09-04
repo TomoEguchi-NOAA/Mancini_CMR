@@ -1,0 +1,185 @@
+---
+title: "Capture recapture analyses for Agnese Mancini"
+output: html_notebook
+---
+
+This document describes data analysis of Agnese Mancini's data of green turtle capture recapture events. 
+
+
+Initialize the workspace
+```{r}
+rm(list=ls())
+library(jagsUI)
+library(tidyverse)
+library(lubridate)
+library(reshape)
+library(bayesplot)
+library(ggridges)
+library(RMark)
+library(R2ucare)
+
+source("Mancini_Cm_functions.R")
+
+do_analysis=function()
+{
+  # create formulas for Phi
+  Phi.dot <-  list(formula=~1)  # easier and shorter names
+  Phi.weight <- list(formula=~ weight)
+  
+  #create formulas for p
+  p.dot <- list(formula=~1)
+  p.time <- list(formula=~time)
+  
+  # create all combinations 
+  cml <- create.model.list("CJS")
+  
+  # run all all 8 models and return as a list with class marklist
+  results <- mark.wrapper(cml,
+                          data=dp,
+                          ddl=ddl,
+                          output=FALSE,
+                          silent=TRUE)
+  return(results)
+}
+
+```
+
+Bring in the data file and get ready for CJS
+
+```{r}
+dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+CJS.data <- dat2CJS(dat.1, save.file = FALSE)
+CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
+dat.1 %>% select(ID, weight_kg) %>% group_by(ID) %>%
+  summarise(min_weight = min(weight_kg, na.rm = T)) -> data.weight
+
+# capture history
+tmp <- apply(as.matrix(CJS.data$data), MARGIN = 2, FUN = paste0)
+CH <- unite(data.frame(tmp), col = "ch", sep = "")
+
+# capture dates and difference in years
+cap.dates <- paste0(colnames(CJS.data$data), "-01")
+delta.dates <- as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
+                            as.Date(cap.dates[1:(length(cap.dates)-1)]))/365
+
+dp <- process.data(CH, model = "CJS", time.intervals = delta.dates)
+ddl <- make.design.data(dp)
+model <- mark(dp, ddl)
+
+summary(model)
+
+```
+
+pdot.
+
+```{r}
+MCMC.params$model.file = "models/Model_CJS_pdot.txt"
+
+# initial values - when removing z, no input
+initsFunction <- function(ch){
+  mean.phi <- rbeta(1,2,2)
+  mean.p <- rbeta(1,2,2)
+  z <- known.state.cjs(ch)
+  b <- rnorm(1, 0, 50)
+  A <- list(mean.phi = mean.phi, mean.p = mean.p, z = z, beta = b)
+  return(A)
+}
+
+## parameters to monitor - when this is changed, make sure to change
+## summary statistics indices at the end of this script. 
+parameters <- c("mean.p", "mean.phi", "N")
+
+inits <- lapply(replicate(MCMC.params$n.chains, 
+                          CH, 
+                          simplify = FALSE), 
+                initsFunction)
+
+if (!file.exists("RData/CJS_pdot.rds")){
+  jm.pdot <- jags(data = jags.data,
+             inits = inits,
+             parameters.to.save= parameters,
+             model.file = MCMC.params$model.file,
+             n.chains = MCMC.params$n.chains,
+             n.burnin = MCMC.params$n.burnin,
+             n.thin = MCMC.params$n.thin,
+             n.iter = MCMC.params$n.samples,
+             DIC = T, 
+             parallel=T)
+  
+  out.list <- list(jags.out = jm.pdot,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, file = "RData/CJS_pdot.rds")
+  
+} else {
+  jm.pdot <- readRDS("RData/CJS_pdot.rds")
+}
+
+
+```
+
+```{r}
+# look at trace and posteriors
+mcmc_trace(jm.pdot$samples, c("mean.phi"))
+mcmc_dens(jm.pdot$samples, c("mean.phi"))
+```
+
+
+pt
+
+```{r}
+
+MCMC.params$model.file <- "models/Model_CJS_pt.txt"
+                    
+# initial values - when removing z, no input
+initsFunction <- function(ch){
+  phi <- rbeta(1,2,2)
+  p <- rbeta(1,2,2)
+  z <- known.state.cjs(ch)
+  b <- rnorm(1, 0, 50)
+  A <- list(mean.phi = phi, mean.p = p, z = z, beta = b)
+  return(A)
+}
+
+## parameters to monitor - when this is changed, make sure to change
+## summary statistics indices at the end of this script. 
+parameters <- c("p", "mean.phi", "N")
+
+inits <- lapply(replicate(MCMC.params$n.chains, 
+                          CH, 
+                          simplify = FALSE), 
+                initsFunction)
+
+if (!file.exists("RData/CJS_pt.rds")){
+  jm.pt <- jags(data = jags.data,
+             inits = inits,
+             parameters.to.save= parameters,
+             model.file = MCMC.params$model.file,
+             n.chains = MCMC.params$n.chains,
+             n.burnin = MCMC.params$n.burnin,
+             n.thin = MCMC.params$n.thin,
+             n.iter = MCMC.params$n.samples,
+             DIC = T, 
+             parallel=T)
+  
+  out.list <- list(jags.out = jm.pt,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, file = "RData/CJS_pt.rds")
+  
+} else {
+  jm.pt <- readRDS("RData/CJS_pt.rds")
+}
+
+```
+
+Check MCMC results
+```{r}
+# look at trace and posteriors
+mcmc_trace(jm.pt$samples, c("mean.phi"))
+mcmc_dens(jm.pt$samples, c("mean.phi"))
+```
+
+
+Try 

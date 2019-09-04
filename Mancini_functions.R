@@ -40,7 +40,7 @@ get.data <- function(filename){
                    CDATE = as.Date(paste0(year, "-", month, "-", day))) %>% 
     transmute(ID = ID,
               detect = 1,
-              species = species,
+              species = as.factor(species),
               DATE = CDATE,
               season = season,
               SCL = SCL,
@@ -56,8 +56,8 @@ dat2CJS <- function(dat.1, save.file = FALSE){
   
   # Create ID by Date and assign 1s
   tmp <-melt(dat.1, 
-             id.var = c("ID", "season"), 
-             measure.var = "detect")
+             id.vars = c("ID", "season"), 
+             measure.vars = "detect")
   
   # make a table with ID by season
   dat.01 <- cast(tmp, ID ~ season)

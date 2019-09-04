@@ -40,39 +40,7 @@ Find those that were captured more than once: (or better to use more than twice 
 
 ```{r}
 for (s in 1:length(spp)){
-  # remove rows with is.na(CCL) is true:
-  dat.1 %>% filter(species == spp[s]) %>%
-    filter(!is.na(CCL)) -> dat.2
-  
-  n.cap.ID <- table(dat.2$ID)
-  recap.ID <- data.frame(n.cap.ID[n.cap.ID > 2])
-  colnames(recap.ID) <- c("ID", "Freq")
-  
-  recap.ID %>% left_join(dat.2, by = "ID") -> recap.data
-  
-  # Make length and capture date matrices
-  unique.ID <- recap.ID$ID
-  size.mat <- date.mat <- matrix(nrow = length(unique.ID),
-                                 ncol = max(recap.data$Freq))
-  
-  date.1 <- structure(numeric(length(unique.ID)), class = "Date")
-  n.vec <- vector(mode = "numeric", length = length(unique.ID))
-  
-  k <- 1
-  for (k in 1:length(unique.ID)){
-    tmp.ID <- filter(recap.data, ID == unique.ID[k])
-    size.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$CCL
-    date.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$DATE - min(tmp.ID$DATE)
-    date.1[k] <- min(tmp.ID$DATE)
-    n.vec[k] <- nrow(tmp.ID)
-  }
-  
-  date.mat <- date.mat[, 2:ncol(date.mat)]/365
-  
-  jags.data <- list(nIndiv = length(unique.ID),
-                    n = n.vec,
-                    L = size.mat,
-                    t = date.mat)
+  jags.data <- vonBert.jags.data(dat.1, spp[s])
   
   MCMC.params$model.file <-  "models/Model_RlinfRk_L.txt"
   if (!file.exists(paste0("RData/Rlinf_Rk_", spp[s], ".rds"))){
@@ -80,7 +48,7 @@ for (s in 1:length(spp)){
                     'Linf', 'LinfMu', 'LinfSD', 
                     'Shape', 'rate', #'kAlpha', 'kBeta', 
                     'deviance')
-    jm.1 <- jags(data = jags.data,
+    jm.1 <- jags(data = jags.data$jags.data,
                #inits = inits,
                parameters.to.save= parameters,
                model.file = MCMC.params$model.file,
@@ -102,7 +70,7 @@ for (s in 1:length(spp)){
                     'Shape', 'rate', #'kAlpha', 'kBeta', 
                     'deviance')
     
-    jm.2 <- jags(data = jags.data,
+    jm.2 <- jags(data = jags.data$jags.data,
                  #inits = inits,
                  parameters.to.save= parameters,
                  model.file = MCMC.params$model.file,
@@ -124,7 +92,7 @@ for (s in 1:length(spp)){
                     'Shape', 'rate', #'kAlpha', 'kBeta', 
                     'deviance')
     
-    jm.3 <- jags(data = jags.data,
+    jm.3 <- jags(data = jags.data$jags.data,
                  #inits = inits,
                parameters.to.save= parameters,
                model.file = MCMC.params$model.file,
@@ -146,7 +114,7 @@ for (s in 1:length(spp)){
                     'Shape', 'rate', #'kAlpha', 'kBeta', 
                     'deviance')
     
-    jm.4 <- jags(data = jags.data,
+    jm.4 <- jags(data = jags.data$jags.data,
                  #inits = inits,
                  parameters.to.save= parameters,
                  model.file = MCMC.params$model.file,

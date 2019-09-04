@@ -1,3 +1,44 @@
+
+
+vonBert.jags.data <- function(dat.1, sp.code){
+  # remove rows with is.na(CCL) is true:
+  dat.1 %>% filter(species == sp.code) %>%
+    filter(!is.na(CCL)) -> dat.2
+  
+  n.cap.ID <- table(dat.2$ID)
+  recap.ID <- data.frame(n.cap.ID[n.cap.ID > 2])
+  colnames(recap.ID) <- c("ID", "Freq")
+  
+  recap.ID %>% left_join(dat.2, by = "ID") -> recap.data
+  
+  # Make length and capture date matrices
+  unique.ID <- recap.ID$ID
+  size.mat <- date.mat <- matrix(nrow = length(unique.ID),
+                                 ncol = max(recap.data$Freq))
+  
+  date.1 <- structure(numeric(length(unique.ID)), class = "Date")
+  n.vec <- vector(mode = "numeric", length = length(unique.ID))
+  
+  k <- 1
+  for (k in 1:length(unique.ID)){
+    tmp.ID <- filter(recap.data, ID == unique.ID[k])
+    size.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$CCL
+    date.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$DATE - min(tmp.ID$DATE)
+    date.1[k] <- min(tmp.ID$DATE)
+    n.vec[k] <- nrow(tmp.ID)
+  }
+  
+  date.mat <- date.mat[, 2:ncol(date.mat)]/365
+  
+  jags.data <- list(nIndiv = length(unique.ID),
+                    n = n.vec,
+                    L = size.mat,
+                    t = date.mat)
+  
+  return(list(jags.data = jags.data,
+              ID = unique.ID))
+}
+
 get.data <- function(filename){
   col.def <- cols(monitoring_event = col_character(),
                   value = col_integer(),

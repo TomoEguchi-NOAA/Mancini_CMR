@@ -73,6 +73,9 @@ data.weight  %>% left_join(data.CJS, by = "ID") %>%
 data.weight  %>% left_join(data.CJS, by = "ID") %>%
   select(min_weight) -> cov.weight
 
+# here I define transients to be those that were caught just once
+# but that eliminates the possibility of dying after the first
+# capture - how do I deal with this?
 n.cap <- rowSums(CH.1)
 transient.vec <- rep(1, times = length(n.cap))
 transient.vec[n.cap > 1] <- 2
@@ -88,8 +91,7 @@ cap.dates <- paste0(colnames(CJS.data$data), "-01")
 delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
                                    as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
 
-# I need to define transience somewhere... but can't do that with individual covariate
-# unless I define each individual whether or not they are transients... 
+
 dp <- process.data(CH, model = "CJS", 
                    time.intervals = delta.dates,
                    groups = "Transient",
@@ -137,6 +139,17 @@ test2cl_Cm <- test2cl(as.matrix(CH.1), rep(1, nrow(CH.1)))
 # look at the overall results
 test_all_Cm <- overall_CJS(as.matrix(CH.1), rep(1, nrow(CH.1)))
 
+# using Justin's equations from Howick's data:
+stat_new <- overall_CJS(as.matrix(CH.1), 
+                        rep(1, nrow(CH.1)))$chi2 - 
+  (test3sr(as.matrix(CH.1), 
+           rep(1, nrow(CH.1)))$test3sr[[1]])
+df_new <- overall_CJS(as.matrix(CH.1), 
+                      rep(1, nrow(CH.1)))$degree_of_freedom - 
+  (test3sr(as.matrix(CH.1), rep(1, nrow(CH.1)))$test3sr[[2]])
+
+1-pchisq(stat_new, df_new)
+
 ```
 
 Look at one at a time:
@@ -175,8 +188,12 @@ test_all_Cm
 I need to figure out what they mean... 
 
 
+Adding transients increased chat values... 
+
 When just looking at the overall GOF test for CJS, the approximate chat is 2 - a bit higher than what we want it to be (~1).  
 
 c-hat in the Mark output is 2.29.  
 
-Maybe... I need to add transients into the model?  How can I do that? 
+
+
+

@@ -83,12 +83,14 @@ get.data <- function(filename){
               detect = 1,
               species = as.factor(species),
               DATE = CDATE,
-              season = season,
+              season = as.factor(season),
               SCL = SCL,
               CCL = CCL,
               weight_kg = weight_kg,
               sex = sex)-> dat.1
   
+  # "indefindio" species are greens per Agnese 
+  # email on 2019-09-04
   dat.1[dat.1$species == "In", "species"] <- "Cm"
   
   return(dat.1)
@@ -103,7 +105,9 @@ dat2CJS <- function(dat.1, save.file = FALSE){
              measure.vars = "detect")
   
   # make a table with ID by season
-  dat.01 <- cast(tmp, ID ~ season)
+  dat.01 <- cast(tmp, 
+                 formula = ID ~ season,
+                 fun.aggregate = length)
   
   # replace > 1 with ones
   dat.01 <- as.data.frame(dat.01) %>%

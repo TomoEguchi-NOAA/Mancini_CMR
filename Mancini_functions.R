@@ -220,4 +220,20 @@ dat2dat01 <- function(dat.1, save.file = FALSE){
 }
 
 
-
+dat2CJS_covCCL <- function(dat.1){
+  
+  # Create ID by Date and assign 1s
+  tmp <-melt(dat.1, 
+             id.vars = c("ID", "season"), 
+             measure.vars = "CCL")
+  
+  # make a table with ID by season
+  dat.CCL <- reshape2::dcast(tmp, 
+                             formula = ID ~ season,
+                             value.var = "value",
+                             fun.aggregate = mean)
+  
+  out <- dat.CCL
+  return(out)
+  
+}

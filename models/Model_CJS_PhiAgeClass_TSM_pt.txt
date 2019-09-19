@@ -14,6 +14,11 @@ model {
     N[t] <- n[t]/p[t]
   }
 
+
+  for (u in 1:4){
+     gamma[u] ~ dbeta(5, 2)
+  }
+
   mean.phi ~ dbeta(5, 2) #unif(0,1)
   mu <- log(mean.phi / (1 - mean.phi))
 

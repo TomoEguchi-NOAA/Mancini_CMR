@@ -1,0 +1,171 @@
+---
+title: "Preliminary analyses of capture-recapture data for hawksbill turtles"
+author: "Tomo Eguchi"
+date: "9/19/2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+
+knitr::opts_chunk$set(echo = TRUE)
+library(jagsUI)
+library(tidyverse)
+library(lubridate)
+library(reshape)
+library(bayesplot)
+library(ggridges)
+
+source("Mancini_functions.R")
+
+```
+
+This document summarizes preliminary analyses of capture-recapture data for hawksbill turtles.  The data were used to investigate somatic growth patterns and to estimate survival rates and abundance.  Growths patterns of hawksbill turtles were determined by fitting the von Bertalanffy function to repeated measurements of CCL.  To estimate survival and abundance, the Cormack-Jolly-Seber capture-mark-recapture (CJS CMR) model was fitted to the capture-recapture histories. In the following, I will summarize the preliminary results of the analyses.  
+
+All statistical analyses were conducted using the R statistical environment (v. 3.6.1, R Development Team).
+
+## Growths
+# Methods
+I used a Bayesian version of von Bertalanffy growth model, which was developed for  abalone (ref) and used for green turtles (Eguchi et al. 2010). The model was fitted using JAGS (Plummer 2018) via the jagsUI package.
+
+There are two growth parameters in the von Bertalanffy function: L_inf and k.  L_inf is considered as the asymptotic size and k is the growth parameter.  Larger k values correspond to faster growths.  Four models were considered based on the assumptions of  the two parameters.  Each parameter was considered either "random" or "fixed."  When a parameter is "random," it comes from a distribution and each individual receives a unique value according to the distribution.  The mean and variance of the distribution are estimated as well as a value for each individual.  When a parameter is fixed, all individuals will have the same value.  The last parameter of the function is t_0, which is considered as the theoretical age at length 0.  In the Bayesian approach, the parameter t_0 is replaced with one that is treated as... (A)
+
+I used the deviance information criteria (DIC) to compare the performance of the four models. (DIC is not considered best these days... so I will look into other options but this was the quickest way to get this done.)
+
+```{r load_data, include=FALSE, echo=FALSE}
+dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+dat.1.Ei <- filter(dat.1, species == "Ei")
+
+ID.CCLna <- dat.1.Ei[which(is.na(dat.1.Ei$CCL)),]
+
+# check to see how many times each one of these were caught. 
+n.caps.ID.CCLna <- c(nrow(dat.1.Ei[dat.1.Ei$ID %in% lapply(ID.CCLna[,1], as.character)$ID[1],]),
+                     nrow(dat.1.Ei[dat.1.Ei$ID %in% lapply(ID.CCLna[,1], as.character)$ID[2],]),
+                     nrow(dat.1.Ei[dat.1.Ei$ID %in% lapply(ID.CCLna[,1], as.character)$ID[3],]))
+
+
+jags.data <- vonBert.jags.data(dat.1, "Ei")
+
+jm.RLinf_Rk.Ei <- readRDS("RData/Rlinf_Rk_Ei.rds")
+jm.RLinf_Fk.Ei <- readRDS("RData/Rlinf_Fk_Ei.rds")
+jm.FLinf_Rk.Ei <- readRDS("RData/Flinf_Rk_Ei.rds")
+jm.FLinf_Fk.Ei <- readRDS("RData/Flinf_Fk_Ei.rds")
+
+DICs <- data.frame(model = c("R_Linf_R_k", "R_Linf_F_k", 
+                             "F_Linf_R_k", "F_Linf_F_k"),
+                   DIC = c(jm.RLinf_Rk.Ei$DIC, jm.RLinf_Fk.Ei$DIC, 
+                           jm.FLinf_Rk.Ei$DIC, jm.FLinf_Fk.Ei$DIC))
+
+#arrange(DICs, DIC)
+```
+
+# Results
+There were ```r length(unique(dat.1.Ei$ID))``` individuals in the dataset, where CCL records were missing from ```r sum(is.na(dat.1.Ei$CCL))``` captures.  These three individuals were caught once (```r lapply(ID.CCLna[,1], as.character)$ID[1]```  on ```r ID.CCLna[1, "DATE]```, ```r lapply(ID.CCLna[,1], as.character)$ID[2]```  on ```r ID.CCLna[2, "DATE]```, and ```r lapply(ID.CCLna[,1], as.character)$ID[3]```  on ```r ID.CCLna[3, "DATE]``` ).  These turtles were excluded from the analysis.  CCL ranged from ```r min(dat.1.Ei$CCL, na.rm = T)``` to ```r max(dat.1.Ei$CCL, na.rm= T)``` with the mean of ```r mean(dat.1.Ei$CCL, na,rm = T)```.     
+
+Convergence was reached for all models according to the Gelman-Rubin Rhat statistic (Rhat < 1.1) and visual inspections of Markov chain Monte Carlo simulations (results not shown).  
+
+DIC indicated that random L_inf and fixed k model was the best.  The median L_inf was ```r signif(jm.RLinf_Fk.Ei$q50$LinfMu, 2)``` (95% CI = ```r signif(jm.RLinf_Fk.Ei$q2.5$LinfMu, 2)``` - ```r signif(jm.RLinf_Fk.Ei$q97.5$LinfMu, 2)```).  The median growth coefficient (k) was ```r signif(jm.RLinf_Fk.Ei$q50$k, 2)```  (95% CI = ```r signif(jm.RLinf_Fk.Ei$q2.5$k, 2)``` - ```r signif(jm.RLinf_Fk.Ei$q97.5$k, 2)```).    
+
+```{r plot_vB, include=FALSE, echo=FALSE}
+Linf <- jm.RLinf_Fk.Ei$q50$Linf
+k <- jm.RLinf_Fk.Ei$q50$k
+A <- jm.RLinf_Fk.Ei$q50$A
+
+time.vec <- 0:59
+
+unique.ID <- jags.data$ID
+
+time.mat <- L_Exp <- L_Exp.lo <- L_Exp.hi <- matrix(ncol = length(unique.ID), nrow = length(time.vec))
+
+i <- 1
+for (i in 1:length(unique.ID)){
+  L_Exp[,i] <-  Linf[i] * (1.0 - exp(-k * (A[i] + time.vec)))
+  #L_Exp.lo[,i] <-  Linf.lo * (1.0 - exp(-k * (A[i] + time.vec)))
+  #L_Exp.hi[,i] <-  Linf.hi * (1.0 - exp(-k * (A[i] + time.vec)))
+  
+  time.mat[,i] <- A[i] + time.vec
+}
+
+colnames(L_Exp) <- unique.ID
+L_Exp_long <- melt(L_Exp)
+colnames(L_Exp_long) <- c("time1", "ID", "CCL")
+
+# colnames(L_Exp.lo) <- unique.ID
+# L_Exp.lo_long <- melt(L_Exp.lo)
+# colnames(L_Exp.lo_long) <- c("time1", "ID", "CCL")
+# 
+# colnames(L_Exp.hi) <- unique.ID
+# L_Exp.hi_long <- melt(L_Exp.hi)
+# colnames(L_Exp.hi_long) <- c("time1", "ID", "CCL")
+
+colnames(time.mat) <- unique.ID
+time_long <- melt(time.mat)
+colnames(time_long) <- c("time1", "ID", "Years")
+
+L_Exp_long$Years <- time_long$Years
+# L_Exp.lo_long$Years <- time_long$Years
+# L_Exp.hi_long$Years <- time_long$Years
+
+p.1 <- ggplot() + 
+  geom_path(data = L_Exp_long,
+            aes(x = Years, y = CCL, color = ID)) +
+  # geom_path(data = L_Exp.lo_long,
+  #           aes(x = Years, y = CCL, color = ID),
+  #           linetype = 2) +
+  # geom_path(data = L_Exp.hi_long,
+  #           aes(x = Years, y = CCL, color = ID),
+  #           linetype = 2) +
+  
+  theme(legend.position = "none")
+
+```
+
+
+
+
+```{r pressure, echo=FALSE}
+plot(p.1)
+```
+
+## Survival and abundance
+
+I used the CJS model to the capture-recapture histories for this preliminary analyses.  It may be worthwhile to explore other models, such as multi-state and robust-design, in the future.  Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (phi) and capture/recapture probability (p).  The abundance may be estimated through the Horowitz-Thompson estimator, where the number of captured individuals per sampling unit is divided by the estimated capture probability. The estimated survival rate should be considered as an apparent survival reate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
+
+The basic model can be extended to accomodate various modifications, such as time-dependent survival rates, time-dependent capture probability, covariate-dependent survival rates and capture probabilities.    
+
+# Methods
+Capture history data were pooled by sampling seasons (summer and winter). Consequently, multiple captures within each season were treated as one capture. 
+
+I considered several possible models for this analysis. For survival rates, they were treated as either constant, affected by transients (time-since-marking; TSM), or a function of size (CCL).  For capture probabilities, they were treated as either constant, time dependent, different between the first and subsequent captures (trap response), or a function of effort. A total of eight models were fitted to the data (Table x).
+
+Analyses were conducted using a Bayesian approach using JAGS (Plummer 2018) via jagsUI in the R statistical environment. 
+
+# Results
+```{r CMR_data, include=FALSE, echo=FALSE}
+dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
+
+CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
+
+# Use CCL as a covariate as only three were missed (these may be recaptures also).
+dat.1.Ei %>% select(ID, CCL) %>% group_by(ID) %>%
+  summarise(min_CCL = min(CCL, na.rm = T)) %>%
+  filter(!is.infinite(min_CCL)) -> data.CCL
+
+dat.1.Ei %>% select(season, "DATE") %>% 
+  group_by(season) %>% #-> tmp3
+  summarise(effort = n_distinct(DATE)) -> effort.season
+  
+dat.1.CCL <- dat2CJS_covCCL(dat.1.Ei)
+data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+  select(-min_CCL) -> dat.2.CCL
+
+```
+
+After grouping capture records within each season, turtles were caught on  ```r ncol(data.CJS)``` occasions. The number of capture events within each season ranged from ```r min(effort.season)``` to ```r max(effort.season)```.  The number of turtles caught per season ranged from ```r min(rowSums(data.CJS))``` to ```r max(rowSums(data.CJS))```.   
+
+There were ```r nrow(data.CJS)``` individuals in the capture records, where the number of captures per individual ranged from ```r min(colSums(data.CJS))``` to ```r max(colSums(data.CJS))```.   
+ 
+

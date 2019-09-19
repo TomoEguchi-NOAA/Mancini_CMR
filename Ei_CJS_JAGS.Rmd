@@ -33,9 +33,11 @@ Bring in the data file and get ready for CJS
 dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
 dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+# remove the three turtles without CCL measurements (they were caught once each)
+ID.CCLna <- dat.1.Ei[which(is.na(dat.1.Ei$CCL)), c("ID", "DATE")]
+dat.1.Ei <- anti_join(dat.1.Ei, ID.CCLna, by = "ID")
 
 CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
-
 CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
 
 # Number of years between occasions. 
@@ -299,7 +301,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_JAGS.rds"))){
 
 
 
-pt with minimumn CCL as a covariate for survival. Need to redo the data.
+pt with minimumn CCL as a covariate for survival. 
 
 ```{r}
 
@@ -308,11 +310,13 @@ MCMC.params <- list(n.samples = 80000,
                     n.thin = 5,
                     n.chains = 5)
 
-dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
-
-dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+# dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+# 
+# dat.1 %>% filter(species == "Ei") -> dat.1.Ei
 
 # Use CCL as a covariate as only three were missed (these may be recaptures also).
+# these should have been taken care of - those three wer removed at the beginning
+
 dat.1.Ei %>% select(ID, CCL) %>% group_by(ID) %>%
   summarise(min_CCL = min(CCL, na.rm = T)) %>%
   filter(!is.infinite(min_CCL)) -> data.CCL

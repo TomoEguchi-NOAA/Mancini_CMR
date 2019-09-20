@@ -43,6 +43,16 @@ n.caps.ID.CCLna <- c(nrow(dat.1.Ei[dat.1.Ei$ID %in% lapply(ID.CCLna[,1], as.char
                      nrow(dat.1.Ei[dat.1.Ei$ID %in% lapply(ID.CCLna[,1], as.character)$ID[2],]),
                      nrow(dat.1.Ei[dat.1.Ei$ID %in% lapply(ID.CCLna[,1], as.character)$ID[3],]))
 
+dat.1.Ei %>% select(ID, CCL) %>% group_by(ID) %>%
+  summarise(min_CCL = min(CCL, na.rm = T)) %>%
+  filter(!is.infinite(min_CCL)) -> data.CCL
+
+CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
+
+CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
+
+data.CCL  %>% left_join(data.CJS, by = "ID") %>%
+  select(min_CCL) -> cov.CCL
 
 jags.data <- vonBert.jags.data(dat.1, "Ei")
 
@@ -60,7 +70,45 @@ DICs <- data.frame(model = c("R_Linf_R_k", "R_Linf_F_k",
 ```
 
 # Results
-There were ```r length(unique(dat.1.Ei$ID))``` individuals in the dataset, where CCL records were missing from ```r sum(is.na(dat.1.Ei$CCL))``` captures.  These three individuals were caught once (```r lapply(ID.CCLna[,1], as.character)$ID[1]```  on ```r ID.CCLna[1, "DATE]```, ```r lapply(ID.CCLna[,1], as.character)$ID[2]```  on ```r ID.CCLna[2, "DATE]```, and ```r lapply(ID.CCLna[,1], as.character)$ID[3]```  on ```r ID.CCLna[3, "DATE]``` ).  These turtles were excluded from the analysis.  CCL ranged from ```r min(dat.1.Ei$CCL, na.rm = T)``` to ```r max(dat.1.Ei$CCL, na.rm= T)``` with the mean of ```r mean(dat.1.Ei$CCL, na,rm = T)```.     
+There were ```r length(unique(dat.1.Ei$ID))``` individuals in the dataset, where CCL records were missing from ```r sum(is.na(dat.1.Ei$CCL))``` captures.  These three individuals were caught once (```r lapply(ID.CCLna[,1], as.character)$ID[1]```  on ```r ID.CCLna[1, "DATE"]```, ```r lapply(ID.CCLna[,1], as.character)$ID[2]```  on ```r ID.CCLna[2, "DATE"]```, and ```r lapply(ID.CCLna[,1], as.character)$ID[3]```  on ```r ID.CCLna[3, "DATE"]``` ).  These turtles were excluded from the analysis.  CCL ranged from ```r min(dat.1.Ei$CCL, na.rm = T)``` to ```r max(dat.1.Ei$CCL, na.rm= T)``` with the mean of ```r signif(mean(dat.1.Ei$CCL, na.rm = T), 4)```.     
+
+```{r CCL_histo, warning=FALSE, echo=FALSE}
+ggplot(data = cov.CCL) +
+  geom_histogram(aes(x = min_CCL),
+                 binwidth = 3) +
+  xlab("CCL at first capture (cm)")
+```
+
+The size distribution of captured turtles indicated that the majority of hawksbills in this area are juveniles.  No apparent change in size distributions over time was detected. 
+
+```{r sizeBySeason, echo=FALSE, include=FALSE}
+dat.1.Ei %>% select(season, CCL) %>%
+  group_by(season) %>%
+  summarise(mean = mean(CCL, na.rm = T),
+            n = length(CCL),
+            SE = sqrt(var(CCL))/sqrt(length(CCL)),
+            Low = mean - 2 * SE,
+            High = mean + 2 * SE) -> CCL.mean.season.Ei
+
+CCL.mean.season.Ei[is.na(CCL.mean.season.Ei$SE), "SE"] <- 0
+CCL.mean.season.Ei[is.na(CCL.mean.season.Ei$Low), "Low"] <- CCL.mean.season.Ei[is.na(CCL.mean.season.Ei$Low), "mean"] 
+CCL.mean.season.Ei[is.na(CCL.mean.season.Ei$High), "High"] <- CCL.mean.season.Ei[is.na(CCL.mean.season.Ei$High), "mean"]
+
+
+```
+
+
+```{r plotSizeBySeason, echo=FALSE}
+ggplot(data = CCL.mean.season.Ei) +
+  geom_point(aes(x = season, 
+                 y = mean)) + 
+  geom_errorbar(aes(x = season,
+                    ymin = Low,
+                    ymax = High)) + 
+  ylab("mean +/- 2SE") +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
 
 Convergence was reached for all models according to the Gelman-Rubin Rhat statistic (Rhat < 1.1) and visual inspections of Markov chain Monte Carlo simulations (results not shown).  
 
@@ -129,7 +177,7 @@ plot(p.1)
 
 ## Survival and abundance
 
-I used the CJS model to the capture-recapture histories for this preliminary analyses.  It may be worthwhile to explore other models, such as multi-state and robust-design, in the future.  Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (phi) and capture/recapture probability (p).  The abundance may be estimated through the Horowitz-Thompson estimator, where the number of captured individuals per sampling unit is divided by the estimated capture probability. The estimated survival rate should be considered as an apparent survival reate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
+I fitted the CJS model to the capture-recapture histories for this preliminary analyses.  It may be worthwhile to explore other models, such as multi-state and robust-design, in the future.  Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (phi) and capture/recapture probability (p).  The abundance may be estimated through the Horowitz-Thompson estimator, where the number of captured individuals per sampling unit is divided by the estimated capture probability. The estimated survival rate should be considered as an apparent survival reate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
 
 The basic model can be extended to accomodate various modifications, such as time-dependent survival rates, time-dependent capture probability, covariate-dependent survival rates and capture probabilities.    
 
@@ -164,8 +212,77 @@ data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
 
 ```
 
-After grouping capture records within each season, turtles were caught on  ```r ncol(data.CJS)``` occasions. The number of capture events within each season ranged from ```r min(effort.season)``` to ```r max(effort.season)```.  The number of turtles caught per season ranged from ```r min(rowSums(data.CJS))``` to ```r max(rowSums(data.CJS))```.   
+After grouping capture records within each season, turtles were caught on  ```r ncol(data.CJS)``` occasions. The number of capture events within each season ranged from ```r min(effort.season$effort)``` to ```r max(effort.season$effort)```.  The number of turtles caught per season ranged from ```r min(colSums(CJS.data$data))``` to ```r max(colSums(CJS.data$data))```.   
 
-There were ```r nrow(data.CJS)``` individuals in the capture records, where the number of captures per individual ranged from ```r min(colSums(data.CJS))``` to ```r max(colSums(data.CJS))```.   
- 
+There were ```r nrow(data.CJS)``` individuals in the capture records, where the number of captures per individual ranged from ```r min(rowSums(CJS.data$data))``` to ```r max(rowSums(CJS.data$data))```.   
+
+```{r CJS_model_comparison, echo=FALSE}
+phidot.pdot <- readRDS(file = "RData/CJS_pdot_Ei_JAGS.rds")
+phidot.pt <- readRDS(file = "RData/CJS_pt_Ei_JAGS.rds")
+phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Ei_JAGS.rds")
+phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_JAGS.rds")
+phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Ei_JAGS.rds")
+phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds")
+phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds")
+phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_JAGS.rds")
+
+DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
+                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot", "phiCCL.pt"),
+                   DIC = c(phidot.pdot$jags.out$DIC, 
+                    phidot.pt$jags.out$DIC, 
+                    phidot.pTrap$jags.out$DIC,
+                    phiTSM.pt$jags.out$DIC, 
+                    phiTSM.pEff$jags.out$DIC, 
+                    phiTSM.pTSM$jags.out$DIC, 
+                    phiMinCCL.pdot$jags.out$DIC,
+                    phiCCL.pt$jags.out$DIC))
+
+arrange(DICs, DIC)
+```
+
+According to the DIC valuse, the best model was ```r DICs[which(DICs$DIC == min(DICs$DIC)), "model"]```; survival rate as a function of TSM (transient effect) and capture probability as time-dependent. 
+
+```{r get.stats, echo=FALSE}
+gamma.stats.df <- data.frame(phiTSM.pt$jags.out$summary[grep("gamma", dimnames(phiTSM.pt$jags.out$summary)[[1]]),])
+
+p.stats.df <- data.frame(phiTSM.pt$jags.out$summary[grep("p[", fixed = T,  dimnames(phiTSM.pt$jags.out$summary)[[1]]),])
+p.stats.df$season <- effort.season$season
+
+N.stats.df <- data.frame(phiTSM.pt$jags.out$summary[grep("N[", fixed = T, dimnames(phiTSM.pt$jags.out$summary)[[1]]),])
+N.stats.df$season <- effort.season$season
+
+```
+
+```{r plot.p, echo=F}
+ggplot(data = p.stats.df) + 
+  geom_point(aes(x = season, y = X50.)) + 
+  geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  ylab("Capture probability (median and 95% CI)")
+```
+
+Survival rate of the turtles that were caught the first time was significantly lower than that of recaptured turtles.  This indicated that there was a strong transient effect.  The median of survival rate for the first capture was ```r signif(phiTSM.pt$jags.out$q50$gamma[1], 3)``` (95%CI = ```r signif(phiTSM.pt$jags.out$q2.5$gamma[1], 3)``` - ```r signif(phiTSM.pt$jags.out$q97.5$gamma[1], 3)```), whereas that for the recaptured turtles was ```r signif(phiTSM.pt$jags.out$q50$gamma[2], 3)``` (95%CI = ```r signif(phiTSM.pt$jags.out$q2.5$gamma[2], 3)``` - ```r signif(phiTSM.pt$jags.out$q97.5$gamma[2], 3)```)
+
+```{r plot.gamma, echo=FALSE}
+mcmc_dens(phiTSM.pt$jags.out$samples, c("gamma[1]", "gamma[2]"))
+
+```
+
+The two survival rate estimates can be used to compute the proportion of transients in the samples. Approximately ```r signif(phiTSM.pt$jags.out$q50$prop.trans, 3)``` ((95%CI = ```r signif(phiTSM.pt$jags.out$q2.5$prop.trans, 3)``` - ```r signif(phiTSM.pt$jags.out$q97.5$prop.trans, 3)```))  were transients. 
+
+```{r plot.propTrans, echo=FALSE}
+
+mcmc_dens(phiTSM.pt$jags.out$samples, "prop.trans")
+```
+
+Abundance was estimated using the HT estimator. 
+
+```{r plot.N, echo=FALSE}
+ggplot(data = N.stats.df) + 
+  geom_point(aes(x = season, y = X50.)) + 
+  geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + 
+  ylab("Abundance (Median and 95% CI)")
+```
+
 

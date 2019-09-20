@@ -1,5 +1,5 @@
 ---
-title: "Capture recapture analyses of hawksbills for Agnese Mancini"
+title: "Capture recapture analyses of greens for Agnese Mancini"
 output: html_notebook
 ---
 
@@ -32,9 +32,9 @@ Bring in the data file and get ready for CJS
 
 dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
-dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+dat.1 %>% filter(species == "Cm") -> dat.1.Cm
 
-CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
+CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
 
 CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
 
@@ -79,7 +79,7 @@ Then run JAGS:
 Pdot model
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pdot_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pdot_Cm_JAGS.rds"))){
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
   parameters <- c("mean.p", "mean.phi", "N", "deviance")
@@ -104,14 +104,14 @@ if (!file.exists(paste0("RData/CJS_pdot_Ei_JAGS.rds"))){
   out.list <- list(jags.out = jm.pdot,
                    jags.data = jags.data)
   
-  saveRDS(out.list, file = paste0("RData/CJS_pdot_Ei_JAGS.rds"))
+  saveRDS(out.list, file = paste0("RData/CJS_pdot_Cm_JAGS.rds"))
   
 }
 ```
 
 pt
 ```{r}
-if (!file.exists(paste0("RData/CJS_pt_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pt_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pt.txt"
   
   ## parameters to monitor - when this is changed, make sure to change
@@ -133,7 +133,7 @@ if (!file.exists(paste0("RData/CJS_pt_Ei_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pt_Ei_JAGS.rds"))
+          file = paste0("RData/CJS_pt_Cm_JAGS.rds"))
   
 } 
 
@@ -143,7 +143,7 @@ if (!file.exists(paste0("RData/CJS_pt_Ei_JAGS.rds"))){
 Try the trap response model:
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pTrapResponse_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pTrapResponse.txt"
   
   m <- CH[, 1:(ncol(CH) - 1)]
@@ -170,7 +170,7 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pTrapResponse_Ei_JAGS.rds"))
+          file = paste0("RData/CJS_pTrapResponse_Cm_JAGS.rds"))
   
 } 
 
@@ -179,7 +179,7 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_JAGS.rds"))){
 Time-since-marking - looking at the transients effect on survival 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pt.txt"
   
   first.cap <- jags.data$f
@@ -209,7 +209,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Ei_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pt_Ei_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pt_Cm_JAGS.rds"))
 }
 ```
 
@@ -217,7 +217,7 @@ Time since marking for both phi and p:
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pTSM.txt"
   
   first.cap <- jags.data$f
@@ -247,7 +247,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds"))
 }
 ```
 
@@ -255,11 +255,11 @@ Time since marking for phi and effort for p:
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pEffort.txt"
   
   # need to count how many capture events occured per season
-  dat.1.Ei %>% select(season, "DATE") %>% 
+  dat.1.Cm %>% select(season, "DATE") %>% 
   group_by(season) %>% #-> tmp3
   summarise(effort = n_distinct(DATE)) -> effort.season
   
@@ -293,7 +293,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pEff_Ei_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pEff_Cm_JAGS.rds"))
 }
 ```
 
@@ -310,14 +310,14 @@ MCMC.params <- list(n.samples = 80000,
 
 dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
-dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+dat.1 %>% filter(species == "Cm") -> dat.1.Cm
 
 # Use CCL as a covariate as only three were missed (these may be recaptures also).
-dat.1.Ei %>% select(ID, CCL) %>% group_by(ID) %>%
+dat.1.Cm %>% select(ID, CCL) %>% group_by(ID) %>%
   summarise(min_CCL = min(CCL, na.rm = T)) %>%
   filter(!is.infinite(min_CCL)) -> data.CCL
 
-CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
+CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
 
 CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
 
@@ -350,7 +350,7 @@ jags.data <- list(y = CH.2,
                   x = as.vector(t(cov.CCL)))
 
 
-if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiMinCCL_pdot.txt"
   
   ## parameters to monitor - when this is changed, make sure to change
@@ -373,7 +373,7 @@ if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds"))
+          file = paste0("RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds"))
   
 } 
 ```
@@ -384,9 +384,9 @@ How about time-varying CCL individual covariate?
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
-  dat.1.CCL <- dat2CJS_covCCL(dat.1.Ei)
+  dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
   data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
     select(-min_CCL) -> dat.2.CCL
 
@@ -421,7 +421,7 @@ if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiCCL_pt_Ei_JAGS.rds"))
+          file = paste0("RData/CJS_PhiCCL_pt_Cm_JAGS.rds"))
 }
 
 ```
@@ -429,14 +429,14 @@ if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_JAGS.rds"))){
 Look at the results and compare which model may be better:
 
 ```{r}
-phidot.pdot <- readRDS(file = "RData/CJS_pdot_Ei_JAGS.rds")
-phidot.pt <- readRDS(file = "RData/CJS_pt_Ei_JAGS.rds")
-phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Ei_JAGS.rds")
-phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_JAGS.rds")
-phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Ei_JAGS.rds")
-phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds")
-phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds")
-phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_JAGS.rds")
+phidot.pdot <- readRDS(file = "RData/CJS_pdot_Cm_JAGS.rds")
+phidot.pt <- readRDS(file = "RData/CJS_pt_Cm_JAGS.rds")
+phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Cm_JAGS.rds")
+phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Cm_JAGS.rds")
+phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Cm_JAGS.rds")
+phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds")
+phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds")
+phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Cm_JAGS.rds")
 ```
 
 Look at DICs - although they are not great for model comparison...

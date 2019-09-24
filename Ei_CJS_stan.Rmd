@@ -1,0 +1,629 @@
+---
+title: "Capture recapture analyses of hawksbills for Agnese Mancini"
+output: html_notebook
+---
+
+This document describes data analysis of Agnese Mancini's data of green turtle capture recapture events of hawksbill turtles using the augmented method (Kery and Schaub). 
+
+
+Initialize the workspace
+```{r}
+rm(list=ls())
+
+library(rstan)
+library(rstanarm)
+library(loo)
+library(tidyverse)
+library(lubridate)
+library(reshape)
+library(bayesplot)
+library(ggridges)
+
+
+source("Mancini_functions.R")
+
+n.cores <- parallel::detectCores()
+
+MCMC.n.chains <- ifelse(n.cores < 5, n.cores, 5)
+MCMC.n.samples <- 500000
+MCMC.n.burnin <- 350000
+MCMC.n.thin <- 50
+
+MCMC.params <- list(n.chains = MCMC.n.chains,
+                    n.samples = MCMC.n.samples,
+                    n.burnin = MCMC.n.burnin,
+                    n.thin = MCMC.n.thin)
+
+```
+
+Bring in the data file and get ready for CJS
+
+```{r}
+
+dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+# remove the three turtles without CCL measurements (they were caught once each)
+ID.CCLna <- dat.1.Ei[which(is.na(dat.1.Ei$CCL)), c("ID", "DATE")]
+dat.1.Ei <- anti_join(dat.1.Ei, ID.CCLna, by = "ID")
+
+CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
+CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
+
+# Number of years between occasions. 
+cap.dates <- paste0(colnames(CJS.data$data), "-01")
+delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
+                                   as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
+
+# capture history
+CH <- as.matrix(CJS.data$data)
+
+nInd <- nrow(CJS.data$data)
+
+ns <- colSums(CJS.data$data)
+
+# find the first capture date
+get.first <- function(x) min(which(x != 0))
+f <- apply(CH, 1, get.first)
+
+# stan.data <- list(y = CH, 
+#                   f = f, 
+#                   nind = nInd, 
+#                   noccasions = dim(CH)[2],
+#                   n = ns, 
+#                   T = ncol(CJS.data$data),
+#                   dt = c(0, delta.dates))
+
+stan.data <- list(y = CH, 
+                  nind = nInd, 
+                  n_occasions = dim(CH)[2],
+                  dt = delta.dates)
+
+```
+
+
+Then run stan:
+Pdot model
+```{r}
+
+if (!file.exists(paste0("RData/CJS_pdot_Ei_stan.rds"))){
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("mean_p", "mean_phi")
+  
+  stan.pdot <- stan(file = "models/Model_CJS_p_dot_phi_dot.stan", 
+                    data = stan.data,
+                    pars = parameters,
+                    chains = MCMC.n.chains, 
+                    warmup = MCMC.n.burnin,
+                    iter = MCMC.n.samples,
+                    cores = getOption("mc.cores", MCMC.n.chains),
+                    control = list(adapt_delta = 0.99))
+    
+  out.list <- list(stan.out = stan.pdot,
+                   stan.data = stan.data)
+  
+  saveRDS(out.list, file = paste0("RData/CJS_pdot_phidot_Ei_stan.rds"))
+  
+}
+```
+
+pt
+```{r}
+if (!file.exists(paste0("RData/CJS_pt_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_pt.txt"
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("p", "mean.phi", "N", "deviance")
+  
+  jm.pt <- jags(data = jags.data,
+                #inits = inits,
+                parameters.to.save= parameters,
+                model.file = MCMC.params$model.file,
+                n.chains = MCMC.params$n.chains,
+                n.burnin = MCMC.params$n.burnin,
+                n.thin = MCMC.params$n.thin,
+                n.iter = MCMC.params$n.samples,
+                DIC = T, 
+                parallel=T)
+  
+  out.list <- list(jags.out = jm.pt,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_pt_Ei_JAGS.rds"))
+  
+} 
+
+```
+
+
+Try the trap response model:
+```{r}
+
+if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_pTrapResponse.txt"
+  
+  m <- CH[, 1:(ncol(CH) - 1)]
+  u <- which(m == 0)
+  m[u] <- 2
+  jags.data$m <- m
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("beta", "mean.phi", "deviance")
+  
+  jm.pt.TrapResponse <- jags(data = jags.data,
+                             #inits = inits,
+                             parameters.to.save= parameters,
+                             model.file = MCMC.params$model.file,
+                             n.chains = MCMC.params$n.chains,
+                             n.burnin = MCMC.params$n.burnin,
+                             n.thin = MCMC.params$n.thin,
+                             n.iter = MCMC.params$n.samples,
+                             DIC = T, 
+                             parallel=T)
+  
+  out.list <- list(jags.out = jm.pt.TrapResponse,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_pTrapResponse_Ei_JAGS.rds"))
+  
+} 
+
+```
+
+Time-since-marking - looking at the transients effect on survival 
+```{r}
+
+if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pt.txt"
+  
+  first.cap <- jags.data$f
+  m <- matrix(data = 2, nrow = nrow(CH), ncol = ncol(CH))
+  for (k in 1:nrow(m)){
+    m[k, first.cap[k]] <- 1
+  }
+  
+  jags.data$m <- m
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("gamma", "p", "N", "prop.trans", "deviance")
+  
+  jm.PhiTSM.pt <- jags(data = jags.data,
+                       #inits = inits,
+                       parameters.to.save= parameters,
+                       model.file = MCMC.params$model.file,
+                       n.chains = MCMC.params$n.chains,
+                       n.burnin = MCMC.params$n.burnin,
+                       n.thin = MCMC.params$n.thin,
+                       n.iter = MCMC.params$n.samples,
+                       DIC = T, 
+                       parallel=T)
+  
+  out.list <- list(jags.out = jm.PhiTSM.pt,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_PhiTSM_pt_Ei_JAGS.rds"))
+}
+```
+
+Time since marking for both phi and p:
+
+```{r}
+
+if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pTSM.txt"
+  
+  first.cap <- jags.data$f
+  m <- matrix(data = 2, nrow = nrow(CH), ncol = ncol(CH))
+  for (k in 1:nrow(m)){
+    m[k, first.cap[k]] <- 1
+  }
+  
+  jags.data$m <- m
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("gamma", "beta", "prop.trans", "deviance")
+  
+  jm.PhiTSM.pTSM <- jags(data = jags.data,
+                       #inits = inits,
+                       parameters.to.save= parameters,
+                       model.file = MCMC.params$model.file,
+                       n.chains = MCMC.params$n.chains,
+                       n.burnin = MCMC.params$n.burnin,
+                       n.thin = MCMC.params$n.thin,
+                       n.iter = MCMC.params$n.samples,
+                       DIC = T, 
+                       parallel=T)
+  
+  out.list <- list(jags.out = jm.PhiTSM.pTSM,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds"))
+}
+```
+
+Time since marking for phi and effort for p:
+
+```{r}
+
+if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pEffort.txt"
+  
+  # need to count how many capture events occured per season
+  dat.1.Ei %>% select(season, "DATE") %>% 
+  group_by(season) %>% #-> tmp3
+  summarise(effort = n_distinct(DATE)) -> effort.season
+  
+  first.cap <- jags.data$f
+  m <- matrix(data = 2, nrow = nrow(CH), ncol = ncol(CH))
+  for (k in 1:nrow(m)){
+    m[k, first.cap[k]] <- 1
+  }
+  
+  jags.data$m <- m
+  jags.data$x <- effort.season$effort
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("gamma", "p", "mu", 
+                  "beta", "N", "prop.trans", 
+                  "sigma",  "deviance")
+  
+  jm.PhiTSM.pEff <- jags(data = jags.data,
+                         #inits = inits,
+                         parameters.to.save= parameters,
+                         model.file = MCMC.params$model.file,
+                         n.chains = MCMC.params$n.chains,
+                         n.burnin = MCMC.params$n.burnin,
+                         n.thin = MCMC.params$n.thin,
+                         n.iter = MCMC.params$n.samples,
+                         DIC = T, 
+                         parallel=T)
+  
+  out.list <- list(jags.out = jm.PhiTSM.pEff,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_PhiTSM_pEff_Ei_JAGS.rds"))
+}
+```
+
+
+pt with minimumn CCL as a covariate for survival. 
+
+```{r}
+
+MCMC.params <- list(n.samples = 80000,
+                    n.burnin = 50000,
+                    n.thin = 5,
+                    n.chains = 5)
+
+# dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+# 
+# dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+
+# Use CCL as a covariate as only three were missed (these may be recaptures also).
+# these should have been taken care of - those three wer removed at the beginning
+
+dat.1.Ei %>% select(ID, CCL) %>% group_by(ID) %>%
+  summarise(min_CCL = min(CCL, na.rm = T)) %>%
+  filter(!is.infinite(min_CCL)) -> data.CCL
+
+CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
+
+CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
+
+# This gets you just 0s and 1s
+data.CCL %>% left_join(data.CJS, by = "ID") %>%
+  select(-c("ID", "min_CCL")) -> CH.2
+
+data.CCL  %>% left_join(data.CJS, by = "ID") %>%
+  select(min_CCL) -> cov.CCL
+
+# Number of years between occasions. 
+cap.dates <- paste0(colnames(CJS.data$data), "-01")
+delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
+                                   as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
+
+nInd <- nrow(CH.2)
+ns <- colSums(CH.2)
+
+# find the first capture date
+get.first <- function(x) min(which(x != 0))
+f <- apply(CH.2, 1, get.first)
+
+jags.data <- list(y = CH.2, 
+                  f = f, 
+                  nind = nInd, 
+                  n.occasions = dim(CH)[2],
+                  n = ns, 
+                  T = ncol(CJS.data$data),
+                  dt = c(0, delta.dates),
+                  x = as.vector(t(cov.CCL)))
+
+
+if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_PhiMinCCL_pdot.txt"
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("mean.p", "mu", "beta", "sigma", "N", "deviance")
+  
+  jags.data$x <- 
+  jm.PhiMinCCL.pdot <- jags(data = jags.data,
+                         #inits = inits,
+                         parameters.to.save= parameters,
+                         model.file = MCMC.params$model.file,
+                         n.chains = MCMC.params$n.chains,
+                         n.burnin = MCMC.params$n.burnin,
+                         n.thin = MCMC.params$n.thin,
+                         n.iter = MCMC.params$n.samples,
+                         DIC = T, 
+                         parallel=T)
+  
+  out.list <- list(jags.out = jm.PhiMinCCL.pdot,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds"))
+  
+} 
+```
+
+Trace plots look not so good.  
+
+How about time-varying CCL individual covariate?
+
+```{r}
+
+if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
+  dat.1.CCL <- dat2CJS_covCCL(dat.1.Ei)
+  data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+    select(-min_CCL) -> dat.2.CCL
+
+  
+  CCL.mat <- as.matrix(dat.2.CCL[, 2:ncol(dat.2.CCL)])
+  
+  jags.data <- list(y = CH.2, 
+                    f = f, 
+                    nind = nInd, 
+                    n.occasions = dim(CH)[2],
+                    n = ns, 
+                    T = ncol(CJS.data$data),
+                    dt = c(0, delta.dates),
+                    x = CCL.mat)
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("p", "mu", "beta", "sigma", "N", "deviance")
+  
+  jm.PhiCCL.pt <- jags(data = jags.data,
+                         #inits = inits,
+                         parameters.to.save= parameters,
+                         model.file = MCMC.params$model.file,
+                         n.chains = MCMC.params$n.chains,
+                         n.burnin = MCMC.params$n.burnin,
+                         n.thin = MCMC.params$n.thin,
+                         n.iter = MCMC.params$n.samples,
+                         DIC = T, 
+                         parallel=T)
+  
+  out.list <- list(jags.out = jm.PhiCCL.pt,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_PhiCCL_pt_Ei_JAGS.rds"))
+}
+
+```
+
+
+Age class for survival rate:
+
+```{r}
+
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_pt.txt"
+  dat.1.CCL <- dat2CJS_covCCL(dat.1.Ei)
+  data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+    select(-min_CCL) -> dat.2.CCL
+
+  CCL.mat <- as.matrix(dat.2.CCL[, 2:ncol(dat.2.CCL)])
+  
+  ageclass.mat <- matrix(1, nrow = nrow(CCL.mat), ncol = ncol(CCL.mat))
+  ageclass.mat[which(CCL.mat >= 81.6)] <- 2
+  k <- 1
+  for ( k in 1:nrow(ageclass.mat)){
+    idx.2 <- which(ageclass.mat[k,] == 2)
+    if (length(idx.2) > 0){
+      ageclass.mat[idx.2[1]:ncol(ageclass.mat)] <- 2
+    }     
+  }
+  
+  jags.data <- list(y = CH.2, 
+                    f = f, 
+                    nind = nInd, 
+                    n.occasions = dim(CH)[2],
+                    n = ns, 
+                    T = ncol(CJS.data$data),
+                    dt = c(0, delta.dates),
+                    m = ageclass.mat)
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("p", "mu", "gamma", "sigma", "N", "deviance")
+  
+  jm.PhiAgeClass.pt <- jags(data = jags.data,
+                         #inits = inits,
+                         parameters.to.save= parameters,
+                         model.file = MCMC.params$model.file,
+                         n.chains = MCMC.params$n.chains,
+                         n.burnin = MCMC.params$n.burnin,
+                         n.thin = MCMC.params$n.thin,
+                         n.iter = MCMC.params$n.samples,
+                         DIC = T, 
+                         parallel=T)
+  
+  out.list <- list(jags.out = jm.PhiAgeClass.pt,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_PhiAgeClass_pt_Ei_JAGS.rds"))
+}
+
+```
+
+Age class and TSM for survival rate:
+
+```{r}
+
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_JAGS.rds"))){
+  MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_TSM_pt.txt"
+  dat.1.CCL <- dat2CJS_covCCL(dat.1.Ei)
+  data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+    select(-min_CCL) -> dat.2.CCL
+
+  CCL.mat <- as.matrix(dat.2.CCL[, 2:ncol(dat.2.CCL)])
+  
+  CCL.mat[which(CCL.mat >= 81.6)] <- 2
+  CCL.mat[which(CCL.mat < 81.6)] <- 1
+  
+  first.cap <- jags.data$f
+  m <- matrix(data = 2, nrow = nrow(CH), ncol = ncol(CH))
+  for (k in 1:nrow(m)){
+    m[k, first.cap[k]] <- 1
+  }
+  
+  X <- matrix(data = 1, nrow = nrow(CCL.mat), ncol = ncol(CCL.mat))
+  X[which(m == 1 & CCL.mat == 2)] <- 2
+  X[which(m == 2 & CCL.mat == 1)] <- 3
+  X[which(m == 2 & CCL.mat == 2)] <- 4
+  
+  jags.data <- list(y = CH.2, 
+                    f = f, 
+                    nind = nInd, 
+                    n.occasions = dim(CH)[2],
+                    n = ns, 
+                    T = ncol(CJS.data$data),
+                    dt = c(0, delta.dates),
+                    m = X)
+  
+  ## parameters to monitor - when this is changed, make sure to change
+  ## summary statistics indices at the end of this script. 
+  parameters <- c("p", "mu", "gamma", "sigma", "N", "deviance")
+  
+  jm.PhiAgeClass.TSM.pt <- jags(data = jags.data,
+                       #inits = inits,
+                       parameters.to.save= parameters,
+                       model.file = MCMC.params$model.file,
+                       n.chains = MCMC.params$n.chains,
+                       n.burnin = MCMC.params$n.burnin,
+                       n.thin = MCMC.params$n.thin,
+                       n.iter = MCMC.params$n.samples,
+                       DIC = T, 
+                       parallel=T)
+  
+  out.list <- list(jags.out = jm.PhiAgeClass.TSM.pt,
+                   jags.data = jags.data)
+  
+  saveRDS(out.list, 
+          file = paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_JAGS.rds"))
+}
+
+```
+
+
+Look at the results and compare which model may be better:
+
+```{r}
+phidot.pdot <- readRDS(file = "RData/CJS_pdot_Ei_JAGS.rds")
+phidot.pt <- readRDS(file = "RData/CJS_pt_Ei_JAGS.rds")
+phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Ei_JAGS.rds")
+phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_JAGS.rds")
+phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Ei_JAGS.rds")
+phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds")
+phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds")
+phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_JAGS.rds")
+phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Ei_JAGS.rds")
+phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Ei_JAGS.rds")
+```
+
+Look at DICs - although they are not great for model comparison...
+
+```{r}
+DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
+                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot", "phiCCL.pt",
+                             "phiAgeClass.pt", "phiAgeClass.TSM.pt"),
+                   DIC = c(phidot.pdot$jags.out$DIC, 
+                    phidot.pt$jags.out$DIC, 
+                    phidot.pTrap$jags.out$DIC,
+                    phiTSM.pt$jags.out$DIC, 
+                    phiTSM.pEff$jags.out$DIC, 
+                    phiTSM.pTSM$jags.out$DIC, 
+                    phiMinCCL.pdot$jags.out$DIC,
+                    phiCCL.pt$jags.out$DIC,
+                    phiAgeClass.pt$jags.out$DIC,
+                    phiAgeClass.TSM.pt$jags.out$DIC))
+
+arrange(DICs, DIC)
+```
+
+According to DIC, phi(TSM) p(t) is the best.  Let's take a look at the results.
+
+First is the apparent survival rates for "transients" and "residents." 
+```{r}
+mcmc_dens(phiTSM.pt$jags.out$samples, c("gamma[1]", "gamma[2]"))
+```
+
+```{r}
+gamma.stats <- phiTSM.pt$jags.out$summary[grep("gamma", 
+                                               dimnames(phiTSM.pt$jags.out$summary)[[1]]),]
+gamma.stats
+```
+
+Survival rates of residents were about 0.6/yr.  Kinda low... 
+
+These two give us the proportion of transients = gamma[1]/gamma[2]
+
+```{r}
+mcmc_dens(phiTSM.pt$jags.out$samples, "prop.trans")
+```
+
+Quite a few are transients!
+
+```{r}
+phiTSM.pt$jags.out$summary["prop.trans",]
+```
+
+Using the H-T estimator, we also computed the abundance for each sampling occasion:
+
+```{r}
+N.stats <- phiTSM.pt$jags.out$summary[grep("N", 
+                                           dimnames(phiTSM.pt$jags.out$summary)[[1]]),]
+
+N.stats.df <- data.frame(N.stats)
+
+N.stats.df$season <- colnames(CH.2)
+
+N.stats.df
+```
+
+
+```{r}
+ggplot(data = N.stats.df) +
+  geom_point(aes(x = season, y = X50.)) + 
+  geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) + 
+  ylab("Abundance") + xlab("")
+
+```
+

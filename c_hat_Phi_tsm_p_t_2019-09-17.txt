@@ -1,0 +1,185 @@
+         Logistic Regression Estimate of c
+
+     Estimated c-hat = 1.3373703 with sampling SE = 0.0000000
+
+     95% Conf. Interval c-hat = 1.2919711 to 1.3827695
+
+     One-sided 95% Upper Bound on c-hat = 1.3738581
+
+           Beta Variance-Covariance Matrix
+        -131759.0451034      97271.6825594
+          97271.6825594     -71810.8979726
+
+     MARK Logistic Regression Estimation Output follows...
+
+   Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+   gfortran(dble) Vers. 9.0 Mar 2018    17-Sep-2019 18:20:46    Page  001
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+   This version was compiled by GCC version 7.2.0 using the options: 
+     -cpp -iprefix C:/Program Files/mingw-w64/x86_64-7.2.0-posix-seh-rt_v5-rev1/
+     mingw64/bin/../lib/gcc/x86_64-w64-mingw32/7.2.0/ -D_MT -D_REENTRANT
+     -U_REENTRANT -D IEEE -D DBLEPRECISION -m64 -mtune=core2 -march=nocona -mthreads
+     -O2 -fimplicit-none -fbounds-check -funroll-loops -ftree-vectorize
+     -ffpe-summary=invalid,zero,overflow,underflow -fno-unsafe-math-optimizations
+     -frounding-math -fsignaling-nans -fopenmp.
+
+   This problem will use 12 of 12 possible threads.
+
+
+  INPUT --- proc title Logistic Regression;
+
+   CPU Time for the last procedure was 0.01 seconds.     
+
+
+  INPUT --- proc chmatrix occasions=1 groups=1 etype=Known icovar=1 
+  INPUT --- hist=24;
+
+  INPUT ---     icovariates Truth;
+  INPUT ---          10  10    1.00000;
+  INPUT ---          11   0    1.00000;
+  INPUT ---          10   2    1.35455;
+  INPUT ---          11   8    1.35455;
+  INPUT ---          10   0    1.70909;
+  INPUT ---          11  10    1.70909;
+  INPUT ---          10   0    2.06364;
+  INPUT ---          11  10    2.06364;
+  INPUT ---          10   0    2.41818;
+  INPUT ---          11  10    2.41818;
+  INPUT ---          10   0    2.77273;
+  INPUT ---          11  10    2.77273;
+  INPUT ---          10   0    3.12727;
+  INPUT ---          11  10    3.12727;
+  INPUT ---          10   0    3.48182;
+  INPUT ---          11  10    3.48182;
+  INPUT ---          10   0    3.83636;
+  INPUT ---          11  10    3.83636;
+  INPUT ---          10   0    4.19091;
+  INPUT ---          11  10    4.19091;
+  INPUT ---          10   0    4.54545;
+  INPUT ---          11  10    4.54545;
+  INPUT ---          10   0    4.90000;
+  INPUT ---          11  10    4.90000;
+
+  Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+   gfortran(dble) Vers. 9.0 Mar 2018    17-Sep-2019 18:20:46    Page  002
+   Logistic Regression                                                         
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+
+      Number of unique encounter histories read was 24.
+
+      Number of individual covariates read was 1.
+      Time interval lengths are all equal to 1.
+
+      Data type number is 4
+      Data type is Known Fate                                                                                          
+
+   CPU Time for the last procedure was 0.01 seconds.     
+
+
+  INPUT --- proc estimate link=Logit varest=2ndPart;
+
+
+  INPUT --- model={c-hat logistic regression};
+
+  INPUT ---    group=1 S rows=1 cols=1 Square;
+  INPUT ---         1;
+
+  INPUT ---    design matrix constraints=1 covariates=2;
+  INPUT ---         1 Truth;
+  INPUT ---       blabel(1)=Intercept Truth;
+  INPUT ---       blabel(2)=Slope Truth;
+
+ Link Function Used is LOGIT        
+
+ Variance Estimation Procedure Used is 2ndPart 
+ -2logL(saturated) = 0.0000000     
+ Effective Sample Size = 120
+
+ Number of function evaluations was 40 for 2 parameters.
+ Time for numerical optimization was 0.03 seconds.     
+ -2logL {c-hat logistic regression} = 10.008048     
+ Penalty {c-hat logistic regression} = 0.0000000     
+ Gradient {c-hat logistic regression}:
+  0.2146641E-04  0.5938429E-05
+ Maximum ABS(G) {c-hat logistic regression} = 0.2146641E-04 
+ S Vector {c-hat logistic regression}:
+   1.722223     0.5388107E-06
+ Time to compute number of parameters was 0.01 seconds.     
+ Gap Method for Num. of Estimated Parameters {c-hat logistic regression} = 2          
+ Threshold {c-hat logistic regression} = 0.4293282E-04                 
+ Numerical Threshold Method for Num. of Estimated Parameters {c-hat logistic regression} = 1          
+ Number of Estimated Parameters {c-hat logistic regression} = 2          
+
+   * *  WARNING  * *   Number of parameters estimated from gap method (=2) and threshold method (=1) differ.  Inspect full output.                                                                                                                                                                                                                                                                                                                                                                                                                      
+ Ratios of S Vector {c-hat logistic regression}:
+   1/2    3196340.    
+ DEVIANCE {c-hat logistic regression} = 10.008048                     
+ DEVIANCE Degrees of Freedom {c-hat logistic regression} = 119            
+ c-hat {c-hat logistic regression} = 0.0841012                     
+ AIC {c-hat logistic regression} = 12.008048                  
+ AICc {c-hat logistic regression} = 12.041947                    
+ BIC {c-hat logistic regression} = 14.795540                    
+ Pearson Chisquare {c-hat logistic regression} = 10.000276                  
+
+  Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+   gfortran(dble) Vers. 9.0 Mar 2018    17-Sep-2019 18:20:46    Page  003
+   Logistic Regression                                                         
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+
+
+                 LOGIT Link Function Parameters of {c-hat logistic regression}
+                                                              95% Confidence Interval
+ Parameter                    Beta         Standard Error      Lower           Upper
+ -------------------------  --------------  --------------  --------------  --------------
+    1:Intercept Truth        107.92127       0.0000000       107.92127       107.92127    
+    2:Slope Truth           -80.696621       0.0000000      -80.696621      -80.696621    
+
+
+                 Real Function Parameters of {c-hat logistic regression}
+
+      Following estimates based on unstandardized individual covariate values:
+          Variable   Value         
+          ---------  ------------- 
+          TRUTH       1.0000000    
+                                                               95% Confidence Interval
+  Parameter                  Estimate       Standard Error      Lower           Upper
+ --------------------------  --------------  --------------  --------------  --------------
+     1:                       1.0000000       0.0000000       1.0000000       1.0000000                          
+
+
+                     Estimates of Derived Parameters
+
+           Survival Estimates of {c-hat logistic regression}
+
+       Pr. Surviving
+        Duration of                   95% Confidence Interval
+ Group     Study      Standard Error     Lower          Upper     
+ ----- -------------- -------------- -------------- --------------
+   1    1.0000000      0.0000000      1.0000000      1.0000000    
+
+ Attempted ordering of parameters by estimatibility:
+  1 2
+ Beta number 2 is a singular value.
+
+   CPU Time for the last procedure was 0.03 seconds.     
+
+  Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+   gfortran(dble) Vers. 9.0 Mar 2018    17-Sep-2019 18:20:46    Page  004
+   Logistic Regression                                                         
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+
+
+  INPUT --- proc stop;
+
+     CPU Time in minutes for this job was 0.00
+
+     Time Start = 18:20:46.242   Time End = 18:20:46.262
+
+     Wall Clock Time in minutes for this job was 0.00
+
+
+          E X E C U T I O N   S U C C E S S F U L 

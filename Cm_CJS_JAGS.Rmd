@@ -384,45 +384,45 @@ How about time-varying CCL individual covariate?
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Cm_JAGS.rds"))){
-  MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
-  dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
-  data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
-    select(-min_CCL) -> dat.2.CCL
-
-  
-  CCL.mat <- as.matrix(dat.2.CCL[, 2:ncol(dat.2.CCL)])
-  
-  jags.data <- list(y = CH.2, 
-                    f = f, 
-                    nind = nInd, 
-                    n.occasions = dim(CH)[2],
-                    n = ns, 
-                    T = ncol(CJS.data$data),
-                    dt = c(0, delta.dates),
-                    x = CCL.mat)
-  
-  ## parameters to monitor - when this is changed, make sure to change
-  ## summary statistics indices at the end of this script. 
-  parameters <- c("p", "mu", "beta", "sigma", "N", "deviance")
-  
-  jm.PhiCCL.pt <- jags(data = jags.data,
-                         #inits = inits,
-                         parameters.to.save= parameters,
-                         model.file = MCMC.params$model.file,
-                         n.chains = MCMC.params$n.chains,
-                         n.burnin = MCMC.params$n.burnin,
-                         n.thin = MCMC.params$n.thin,
-                         n.iter = MCMC.params$n.samples,
-                         DIC = T, 
-                         parallel=T)
-  
-  out.list <- list(jags.out = jm.PhiCCL.pt,
-                   jags.data = jags.data)
-  
-  saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiCCL_pt_Cm_JAGS.rds"))
-}
+# if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Cm_JAGS.rds"))){
+#   MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
+#   dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
+#   data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+#     select(-min_CCL) -> dat.2.CCL
+# 
+#   
+#   CCL.mat <- as.matrix(dat.2.CCL[, 2:ncol(dat.2.CCL)])
+#   
+#   jags.data <- list(y = CH.2, 
+#                     f = f, 
+#                     nind = nInd, 
+#                     n.occasions = dim(CH)[2],
+#                     n = ns, 
+#                     T = ncol(CJS.data$data),
+#                     dt = c(0, delta.dates),
+#                     x = CCL.mat)
+#   
+#   ## parameters to monitor - when this is changed, make sure to change
+#   ## summary statistics indices at the end of this script. 
+#   parameters <- c("p", "mu", "beta", "sigma", "N", "deviance")
+#   
+#   jm.PhiCCL.pt <- jags(data = jags.data,
+#                          #inits = inits,
+#                          parameters.to.save= parameters,
+#                          model.file = MCMC.params$model.file,
+#                          n.chains = MCMC.params$n.chains,
+#                          n.burnin = MCMC.params$n.burnin,
+#                          n.thin = MCMC.params$n.thin,
+#                          n.iter = MCMC.params$n.samples,
+#                          DIC = T, 
+#                          parallel=T)
+#   
+#   out.list <- list(jags.out = jm.PhiCCL.pt,
+#                    jags.data = jags.data)
+#   
+#   saveRDS(out.list, 
+#           file = paste0("RData/CJS_PhiCCL_pt_Cm_JAGS.rds"))
+# }
 
 ```
 
@@ -436,58 +436,48 @@ phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Cm_JAGS.rds")
 phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Cm_JAGS.rds")
 phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds")
 phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds")
-phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Cm_JAGS.rds")
+#phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Cm_JAGS.rds")
 ```
 
 Look at DICs - although they are not great for model comparison...
 
 ```{r}
 DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
-                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot", "phiCCL.pt"),
+                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot"),
                    DIC = c(phidot.pdot$jags.out$DIC, 
                     phidot.pt$jags.out$DIC, 
                     phidot.pTrap$jags.out$DIC,
                     phiTSM.pt$jags.out$DIC, 
                     phiTSM.pEff$jags.out$DIC, 
                     phiTSM.pTSM$jags.out$DIC, 
-                    phiMinCCL.pdot$jags.out$DIC,
-                    phiCCL.pt$jags.out$DIC))
+                    phiMinCCL.pdot$jags.out$DIC))
 
 arrange(DICs, DIC)
 ```
 
-According to DIC, phi(TSM) p(t) is the best.  Let's take a look at the results.
-
-First is the apparent survival rates for "transients" and "residents." 
-```{r}
-mcmc_dens(phiTSM.pt$jags.out$samples, c("gamma[1]", "gamma[2]"))
-```
+According to DIC, phi(.) p(t) is the best.  Let's take a look at the results.
 
 ```{r}
-gamma.stats <- phiTSM.pt$jags.out$summary[grep("gamma", 
-                                               dimnames(phiTSM.pt$jags.out$summary)[[1]]),]
-gamma.stats
+mcmc_dens(phidot.pt$jags.out$samples, c("mean.phi"))
 ```
+
+
+```{r}
+p.stats <- phidot.pt$jags.out$summary[grep("p[", 
+                                           dimnames(phidot.pt$jags.out$summary)[[1]],
+                                           fixed = TRUE),]
+p.stats
+```
+
 
 Survival rates of residents were about 0.6/yr.  Kinda low... 
-
-These two give us the proportion of transients = gamma[1]/gamma[2]
-
-```{r}
-mcmc_dens(phiTSM.pt$jags.out$samples, "prop.trans")
-```
-
-Quite a few are transients!
-
-```{r}
-phiTSM.pt$jags.out$summary["prop.trans",]
-```
 
 Using the H-T estimator, we also computed the abundance for each sampling occasion:
 
 ```{r}
-N.stats <- phiTSM.pt$jags.out$summary[grep("N", 
-                                           dimnames(phiTSM.pt$jags.out$summary)[[1]]),]
+N.stats <- phidot.pt$jags.out$summary[grep("N[", 
+                                           dimnames(phidot.pt$jags.out$summary)[[1]],
+                                           fixed = TRUE),]
 
 N.stats.df <- data.frame(N.stats)
 

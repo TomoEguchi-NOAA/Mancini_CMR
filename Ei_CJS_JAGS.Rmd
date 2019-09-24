@@ -442,8 +442,15 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Ei_JAGS.rds"))){
 
   CCL.mat <- as.matrix(dat.2.CCL[, 2:ncol(dat.2.CCL)])
   
-  CCL.mat[which(CCL.mat >= 81.6)] <- 2
-  CCL.mat[which(CCL.mat < 81.6)] <- 1
+  ageclass.mat <- matrix(1, nrow = nrow(CCL.mat), ncol = ncol(CCL.mat))
+  ageclass.mat[which(CCL.mat >= 81.6)] <- 2
+  k <- 1
+  for ( k in 1:nrow(ageclass.mat)){
+    idx.2 <- which(ageclass.mat[k,] == 2)
+    if (length(idx.2) > 0){
+      ageclass.mat[idx.2[1]:ncol(ageclass.mat)] <- 2
+    }     
+  }
   
   jags.data <- list(y = CH.2, 
                     f = f, 
@@ -452,7 +459,7 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Ei_JAGS.rds"))){
                     n = ns, 
                     T = ncol(CJS.data$data),
                     dt = c(0, delta.dates),
-                    m = CCL.mat)
+                    m = ageclass.mat)
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
@@ -549,13 +556,16 @@ phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Ei_JAGS.rds")
 phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_JAGS.rds")
 phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Ei_JAGS.rds")
 phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_JAGS.rds")
+phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Ei_JAGS.rds")
+phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Ei_JAGS.rds")
 ```
 
 Look at DICs - although they are not great for model comparison...
 
 ```{r}
 DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
-                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot", "phiCCL.pt"),
+                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot", "phiCCL.pt",
+                             "phiAgeClass.pt", "phiAgeClass.TSM.pt"),
                    DIC = c(phidot.pdot$jags.out$DIC, 
                     phidot.pt$jags.out$DIC, 
                     phidot.pTrap$jags.out$DIC,
@@ -563,7 +573,9 @@ DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTS
                     phiTSM.pEff$jags.out$DIC, 
                     phiTSM.pTSM$jags.out$DIC, 
                     phiMinCCL.pdot$jags.out$DIC,
-                    phiCCL.pt$jags.out$DIC))
+                    phiCCL.pt$jags.out$DIC,
+                    phiAgeClass.pt$jags.out$DIC,
+                    phiAgeClass.TSM.pt$jags.out$DIC))
 
 arrange(DICs, DIC)
 ```

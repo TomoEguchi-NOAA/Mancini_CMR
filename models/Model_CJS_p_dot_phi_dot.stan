@@ -28,7 +28,6 @@ functions {
 
 // a function to calculate the probability of non-captures
   matrix prob_uncaptured(int nind, int n_occasions,
-                         real[] dt,
                          matrix p, matrix phi) {
     matrix[nind, n_occasions] chi;
 

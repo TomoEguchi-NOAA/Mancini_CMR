@@ -233,95 +233,176 @@ After grouping capture records within each season, capture histories from ```r n
 
 There were ```r nrow(data.CJS)``` individuals in the capture records, where the number of captures per individual ranged from ```r min(rowSums(CJS.data$data))``` to ```r max(rowSums(CJS.data$data))```.   
 
-```{r CJS_model_comparison, echo=FALSE}
-phidot.pdot <- readRDS(file = "RData/CJS_pdot_Cm_JAGS.rds")
-phidot.pt <- readRDS(file = "RData/CJS_pt_Cm_JAGS.rds")
-phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Cm_JAGS.rds")
-phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Cm_JAGS.rds")
-phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Cm_JAGS.rds")
-phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds")
-phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds")
-#phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Cm_JAGS.rds")  # somehow this didn't work
-#phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds")
-#phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds")
+For this report, I use results from Mark because Bayesian analysis is taking a lot of time due to the large dataset.  Goodness-of-fit has been conducted and, although some questions remain as to the CJS model may not be perfect, in general, it is accepted.  
 
-DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
-                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot"), 
-                             #"phiAgeClass.pt", "phiAgeClass.TSM.pt"),
-                   DIC = c(phidot.pdot$jags.out$DIC, 
-                           phidot.pt$jags.out$DIC, 
-                           phidot.pTrap$jags.out$DIC,
-                           phiTSM.pt$jags.out$DIC, 
-                           phiTSM.pEff$jags.out$DIC, 
-                           phiTSM.pTSM$jags.out$DIC, 
-                           phiMinCCL.pdot$jags.out$DIC))
-                           #phiCCL.pt$jags.out$DIC,
-                           #phiAgeClass.pt$jags.out$DIC,
-                           #phiAgeClass.TSM.pt$jags.out$DIC))
+```{r RMark_results, echo=FALSE}
 
-arrange(DICs, DIC)
+dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+dat.1 %>% filter(species == "Cm") -> dat.1.Cm
+
+CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
+
+CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
+
+# using R2ucare::group_data to combine CHs
+CH.2 <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
+
+cm.results <- readRDS(file = "RData/CJS_Cm_RMark.rds")
 ```
 
-According to the DIC values, the best model was ```r DICs[which(DICs$DIC == min(DICs$DIC)), "model"]```; a constant survival rate and capture probability as time-dependent. 
+The comparison of the models showed that one with transients effect on survival and time-dependent capture probability was the best. 
+```{r model_comparison, echo=FALSE}
+model.table(cm.results)
+```
 
-```{r get.stats, echo=FALSE}
-# gamma.stats.df <- data.frame(phiTSM.pt$jags.out$summary[grep("gamma", dimnames(phiTSM.pt$jags.out$summary)[[1]]),])
-phi.stats.df <- phidot.pt$jags.out$summary["mean.phi",]
-#phi.stats.df$season <- effort.season$season
+This model allows us to compute the estimated proportion of residents from the two survival rates.
 
-p.stats.df <- data.frame(phidot.pt$jags.out$summary[grep("p[", fixed = T,  dimnames(phidot.pt$jags.out$summary)[[1]]),])
-p.stats.df$season <- effort.season$season
+```{r prop_res, echo=FALSE}
+p.residents <- cm.results$Phi.tsm.p.t$results$real$estimate[1]/cm.results$Phi.tsm.p.t$results$real$estimate[2]
 
-N.stats.df <- data.frame(phidot.pt$jags.out$summary[grep("N[", fixed = T, dimnames(phidot.pt$jags.out$summary)[[1]]),])
-N.stats.df$season <- effort.season$season
+```
+
+It was estimated to be ```r signif(p.residents, 3)```. 
+
+Abundance was estimated from the estimated capture probability and the number of captured turtles per season. 
+
+```{r Nhats, echo=FALSE}
+phats <- cm.results$Phi.tsm.p.t$results$real[3:38, c("estimate", "lcl", "ucl")]
+phats$season <- colnames(CJS.data$data)[2:(ncol(CJS.data$data))]
+
+n.caught <- colSums(CJS.data$data)
+Nhats.df <- data.frame(season = colnames(CJS.data$data)[2:(ncol(CJS.data$data))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * p.residents,
+                       lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+                       ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents)
+
+
+```
+
+These seem so high! Are there that many green turtles in the area? 
+```{r}
+ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = Nhat)) +
+  geom_errorbar(aes(x = season, ymin = lcl, ymax = ucl)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)")
+
+```
+
+The estimated survival rate was 
+
+
+<!-- ```{r sizeAndCapP, echo=FALSE, warning=FALSE} -->
+<!-- CCL.mean.season.Cm %>% left_join(phats, by = "season") -> CCL.capP.Cm -->
+<!-- ``` -->
+
+
+<!-- Capture probabilities varied over the years and declined as the number of captured turtles increased. -->
+
+<!-- ```{r plotSizeAndCapP, echo=FALSE} -->
+<!-- ggplot(data = CCL.capP.Cm) + -->
+<!--   geom_point(aes(x = season, y = estimate, size = n)) + -->
+<!--     #theme(legend.position = "none") + -->
+<!--   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + -->
+<!--   xlab("season") + -->
+<!--   ylab("Median capture probability") -->
+
+<!-- ``` -->
+
+
+
+Results from the Bayesian approach will presented later. 
+```{r CJS_model_comparison, echo=FALSE, include=FALSE}
+# phidot.pdot <- readRDS(file = "RData/CJS_pdot_Cm_JAGS.rds")
+# phidot.pt <- readRDS(file = "RData/CJS_pt_Cm_JAGS.rds")
+# phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Cm_JAGS.rds")
+# phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Cm_JAGS.rds")
+# phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Cm_JAGS.rds")
+# phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds")
+# phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds")
+# #phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Cm_JAGS.rds")  # somehow this didn't work
+# #phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds")
+# #phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds")
+# 
+# DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
+#                              "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot"), 
+#                              #"phiAgeClass.pt", "phiAgeClass.TSM.pt"),
+#                    DIC = c(phidot.pdot$jags.out$DIC, 
+#                            phidot.pt$jags.out$DIC, 
+#                            phidot.pTrap$jags.out$DIC,
+#                            phiTSM.pt$jags.out$DIC, 
+#                            phiTSM.pEff$jags.out$DIC, 
+#                            phiTSM.pTSM$jags.out$DIC, 
+#                            phiMinCCL.pdot$jags.out$DIC))
+#                            #phiCCL.pt$jags.out$DIC,
+#                            #phiAgeClass.pt$jags.out$DIC,
+#                            #phiAgeClass.TSM.pt$jags.out$DIC))
+# 
+# arrange(DICs, DIC)
+```
+
+<!-- According to the DIC values, the best model was ```r DICs[which(DICs$DIC == min(DICs$DIC)), "model"]```; a constant survival rate and capture probability as time-dependent.  -->
+
+```{r get.stats, echo=FALSE, include=FALSE}
+# # gamma.stats.df <- data.frame(phiTSM.pt$jags.out$summary[grep("gamma", dimnames(phiTSM.pt$jags.out$summary)[[1]]),])
+# phi.stats.df <- phidot.pt$jags.out$summary["mean.phi",]
+# #phi.stats.df$season <- effort.season$season
+# 
+# p.stats.df <- data.frame(phidot.pt$jags.out$summary[grep("p[", fixed = T,  dimnames(phidot.pt$jags.out$summary)[[1]]),])
+# p.stats.df$season <- effort.season$season
+# 
+# N.stats.df <- data.frame(phidot.pt$jags.out$summary[grep("N[", fixed = T, dimnames(phidot.pt$jags.out$summary)[[1]]),])
+# N.stats.df$season <- effort.season$season
 
 ```
 
 
 ```{r plot.p, echo=F}
-ggplot(data = p.stats.df) + 
-  geom_point(aes(x = season, y = X50.)) + 
-  geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + 
-  ylab("Capture probability (median and 95% CI)")
+# ggplot(data = p.stats.df) + 
+#   geom_point(aes(x = season, y = X50.)) + 
+#   geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + 
+#   ylab("Capture probability (median and 95% CI)")
 ```
+
 
 ```{r sizeAndCapP, echo=FALSE}
-CCL.mean.season.Cm %>% left_join(p.stats.df, by = "season") -> CCL.capP.Cm
+# CCL.mean.season.Cm %>% left_join(p.stats.df, by = "season") -> CCL.capP.Cm
 ```
 
 
-Capture probabilities varied over the years and declined as the number of captured turtles increased.  
+<!-- Capture probabilities varied over the years and declined as the number of captured turtles increased.   -->
 
 ```{r plotSizeAndCapP, echo=FALSE}
-ggplot(data = CCL.capP.Cm) + 
-  geom_point(aes(x = season, y = X50., size = n)) + 
-    #theme(legend.position = "none") + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  xlab("season") + 
-  ylab("Median capture probability")
+# ggplot(data = CCL.capP.Cm) + 
+#   geom_point(aes(x = season, y = X50., size = n)) + 
+#     #theme(legend.position = "none") + 
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+#   xlab("season") + 
+#   ylab("Median capture probability")
 
 ```
 
 
 
-The median of survival rate was ```r signif(phidot.pt$jags.out$q50$mean.phi, 3)``` (95%CI = ```r signif(phidot.pt$jags.out$q2.5$mean.phi, 3)``` - ```r signif(phidot.pt$jags.out$q97.5$mean.phi, 3)```).
+<!-- The median of survival rate was ```r signif(phidot.pt$jags.out$q50$mean.phi, 3)``` (95%CI = ```r signif(phidot.pt$jags.out$q2.5$mean.phi, 3)``` - ```r signif(phidot.pt$jags.out$q97.5$mean.phi, 3)```). -->
 
-```{r plot.gamma, echo=FALSE}
-mcmc_dens(phidot.pt$jags.out$samples, c("mean.phi"))
+<!-- ```{r plot.gamma, echo=FALSE} -->
+<!-- mcmc_dens(phidot.pt$jags.out$samples, c("mean.phi")) -->
 
-```
+<!-- ``` -->
 
 
 
-Abundance was estimated using the HT estimator. The median abundance ranged from ```r signif(min(N.stats.df$X50.), 2)``` in ```r N.stats.df$season[which(N.stats.df$X50. == min(N.stats.df$X50.))]``` to ```r signif(max(N.stats.df$X50.), 2)``` in ```r N.stats.df$season[which(N.stats.df$X50. == max(N.stats.df$X50.))]```.  The abundance in the last few seasons seemed to be declining. 
+<!-- Abundance was estimated using the HT estimator. The median abundance ranged from ```r signif(min(N.stats.df$X50.), 2)``` in ```r N.stats.df$season[which(N.stats.df$X50. == min(N.stats.df$X50.))]``` to ```r signif(max(N.stats.df$X50.), 2)``` in ```r N.stats.df$season[which(N.stats.df$X50. == max(N.stats.df$X50.))]```.  The abundance in the last few seasons seemed to be declining.  -->
 
-```{r plot.N, echo=FALSE}
-ggplot(data = N.stats.df) + 
-  geom_point(aes(x = season, y = X50.)) + 
-  geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + 
-  ylab("Abundance (Median and 95% CI)")
-```
+<!-- ```{r plot.N, echo=FALSE} -->
+<!-- ggplot(data = N.stats.df) +  -->
+<!--   geom_point(aes(x = season, y = X50.)) +  -->
+<!--   geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) +  -->
+<!--   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +  -->
+<!--   ylab("Abundance (Median and 95% CI)") -->
+<!-- ``` -->
 
 

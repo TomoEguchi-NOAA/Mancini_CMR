@@ -172,22 +172,11 @@ ddl$p$tsm[ddl$p$age == 0] <- 2
 
 cm.results <- do_analysis(dp = dp, ddl = ddl)
 
+saveRDS(cm.results, file = "RData/CJS_Cm_RMark.rds")
+
 ```
 
-Compare results using AICc:
-
-```{r}
-model.table(cm.results)
-```
-
-According to AICc, the best one is Phi(tsm)p(time). But c-hat > 4!  This is better than before but, obviously, this isn't a great model... What to do? 
-
-Look at the estimates:
-```{r}
-cm.results$Phi.tsm.p.t$results$real
-```
-
-Export to Mark to see Release GOF.
+Export to Mark to see Release GOF or median c-hat.
 ```{r}
 export.MARK(dp, 
             project.name = "Mancini_Cm", 
@@ -198,163 +187,18 @@ export.MARK(dp,
 
 Median c-hat test returned semi-acceptable results of estimated c-hat = 1.xxx, with 95%CI = ().  
 
-
-
-
 Release output is similar to what I find below from R2ucare.
 
-
-R2ucare to do GOF.  There is no GOF for individual covariate models so we need to remove them before checking GOF (from user guide for R2ucare).
-
-```{r}
-
-#CH.ucare <- select(CH, -c("min_weight", "Transient"))
-
-# test away! 
-test3sr_Cm <- test3sr(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
-test3sm_Cm <- test3sm(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
-
-test2ct_Cm <- test2ct(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
-test2cl_Cm <- test2cl(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
-
-# look at the overall results
-test_all_Cm <- overall_CJS(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
-
-# using Justin's equations from Howick's data:
-# stat_new <- overall_CJS(as.matrix(CJS.data$data), 
-#                         rep(1, nrow(CJS.data$data)))$chi2 - 
-#   (test3sr(as.matrix(CJS.data$data), 
-#            rep(1, nrow(CJS.data$data)))$test3sr[[1]])
-# df_new <- overall_CJS(as.matrix(CJS.data$data), 
-#                       rep(1, nrow(CJS.data$data)))$degree_of_freedom - 
-#   (test3sr(as.matrix(CJS.data$data), rep(1, nrow(CJS.data$data)))$test3sr[[2]])
-# 
-# 1-pchisq(stat_new, df_new)
-
-```
-
-Look at one at a time:
-```{r}
-test3sr.details <- test3sr_Cm$details
-
-filter(test3sr.details, p_val < 0.05)
-```
-
-Occasions 3, 5, 14, 23, 25, 30, and 31 were "rejected" at alpha = 0.05.  If we lower the alpha value to be 0.01, only two (3 and 23) were problematic.  Still, the entire test was rejected.  TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." We probalby had more (I'm assuming this from signed_test values...) seen after these occasions than expected.  Could this mean that these seasons included individuas that were "more" residents than from other seasons? 
-
-TEST3.SM, on the other hand, looks at individuals who were seen again.  "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i). So, let's take a look at that result.
+Compare results using AICc:
 
 ```{r}
-test3sm.details <- test3sm_Cm$details
-filter(test3sm.details, p_val < 0.05)
+model.table(cm.results)
 ```
 
-There are 3 occasions that violated the assumptions; 4, 7, and 36.  The 7th and 36th occasions seem to have weird output with no statistics computed for them.  Why would df = 0?  
+According to AICc, the best one is Phi(tsm)p(time). But c-hat > 4 (4.75)!  This is better than before but, obviously, this isn't a great model... What to do? 
 
-To make a comparison, I look at an occasion that passed the test:
-
+Look at the estimates:
 ```{r}
-# first filter rows with 1s on the 25th column
-data.25 <- filter(CJS.data$data, CJS.data$data[, 25] > 0) #%>%
-# then look at recaptures since the 25th occasion
-data.25 <- data.25[, 25:ncol(data.25)]
-
-# look at the recaptures, given they were caught on the 25th occasion. 
-data.25.3sm <- data.25[, c(2:ncol(data.25))]
-rowSums(data.25.3sm)
+cm.results$Phi.tsm.p.t$results$real
 ```
-
-Then look at what happened in those occasions (4, 7, 36). 
-
-```{r}
-# first filter rows with 1s on the 4th column
-data.4 <- filter(CJS.data$data, CJS.data$data[, 4] > 0) #%>%
-# then look at recaptures since the 4th occasion
-data.4 <- data.4[, 4:ncol(data.4)]
-
-# look at the recaptures, given they were caught on the 4th occasion. 
-data.4.3sm <- data.4[, c(2:ncol(data.4))]
-rowSums(data.4.3sm)
-
-```
-
-I see that there are some recaptures that are unusually high - a 5 and 3.  This is probably why this occasion was flagged. 
-
-```{r}
-# first filter rows with 1s on the 7th column
-data.7 <- filter(CJS.data$data, CJS.data$data[, 7] > 0) #%>%
-# then look at recaptures since the 7th occasion
-data.7 <- data.7[, 7:ncol(data.7)]
-
-# look at the recaptures, given they were caught on the 7th occasion. 
-data.7.3sm <- data.7[, c(2:ncol(data.7))]
-rowSums(data.7.3sm)
-
-```
-
-Seems awfuly a small number of captures at the 7th occasion. Of these, only 3 were recaptured more than once after it was released on the 7th occasion. It still doesn't make much sense... 
-
-```{r}
-# 
-data.36 <- filter(CJS.data$data, CJS.data$data[, 36] > 0) #%>%
-#  select(-"ID") 
-
-# then look at recaptures since the 7th occasion
-data.36 <- data.36[, 36:ncol(data.36)]
-
-# this is the second to last occasion.  
-data.36.3sm <- data.36[, c(2:ncol(data.36))]
-data.36.3sm
-
-# n.caps.36.sm <- rowSums(data.36.3sm)
-sum(data.36.3sm)
-#rowSums(data.36.3sm)
-
-```
-
-Of 429 turtles caught on the 36th occasion, 11 were caught again on the 37th (final) occasion.  These are for January and August of 2019.  Not sure why df = 0 in these two occasions. 
-
-So, what do we do with these results...?
-
-
-Moving on to TEST2... TEST2.CT tests the hypothesis that "there is no difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions.  
-
-```{r}
-test2ct_Cm.details <- test2ct_Cm$details
-filter(test2ct_Cm.details, p_val < 0.05)
-```
-
-There were four occasions when the test failed at alpha = 0.05; one (22) was positive and three were negative (4, 16, and 32). With alpha = 0.01, only one (16) was rejected. 
-
-TEST2.CL tests if there is no difference in the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t adn t + 2.  
-
-```{r}
-test2cl_Cm.details <- test2cl_Cm$details
-filter(test2cl_Cm.details, p_val < 0.05)
-```
-
-There were six occasions that were flagged (alpha = 0.05), which were all positive.  Occasions 16 and 22 failed the 2ct and 2cl tests. With alpha = 0.01, two are "significant": occasions 14 and 34. 
-
-
-```{r}
-test_all_Cm
-```
-
-These tests failed at some occasions. Does this mean the entire model is not suited to the data, or there are some occasions that failed the test but the CJS model isn't a complete failure because given the null-hypothesis approach, some tests are bound to fail when there are many occasions?  I see a good sign that many occasions passed these tests... The main concern right now is the estimated c-hat value of > 9.  
-
-How do we deal with that? 
-
-It's possible that using the other criteria, such as median c-hat and other GOF measures, we may be able to get away with using the CJS model. Assuming, that can be done... look at abundance. Do I have to separate residents from transients (only seen just once)?
-
-The estimated proportion of residents can be computed from the two survival rates:
-```{r}
-p.residents <- cm.results$Phi.tsm.p.t$results$real$estimate[1]/cm.results$Phi.tsm.p.t$results$real$estimate[2]
-  
-phats <- cm.results$Phi.tsm.p.t$results$real$estimate[3:38]
-n.caught <- colSums(CJS.data$data)
-Nhats <- (n.caught[2:length(n.caught)]/phats) * p.residents
-```
-
-These seem so high! Are there that many green turtles in the area? 
-
 

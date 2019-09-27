@@ -15,6 +15,7 @@ library(lubridate)
 library(reshape)
 library(bayesplot)
 library(ggridges)
+library(RMark)
 
 source("Mancini_functions.R")
 
@@ -24,7 +25,7 @@ This document summarizes preliminary analyses of capture-recapture data for gree
 
 All statistical analyses were conducted using the R statistical environment (v. 3.6.1, R Development Team).
 
-# Growths
+# Somatic growth
 ## Methods
 I used a Bayesian version of von Bertalanffy growth model, which was developed for fish and invertebrates (Laslett et al. 2002, Eveson et al. 2007, Zhang et al, 2009) and used for green turtles (Eguchi et al. 2010). The model was fitted using JAGS (Plummer 2018) via the jagsUI package.
 
@@ -72,18 +73,48 @@ DICs <- data.frame(model = c("R_Linf_R_k", "R_Linf_F_k",
 # Results
 There were ```r length(unique(dat.1.Cm$ID))``` individuals in the dataset, where CCL records were missing from ```r sum(is.na(dat.1.Cm$CCL))``` captures.  These three individuals were caught once (```r lapply(ID.CCLna[,1], as.character)$ID[1]```  on ```r ID.CCLna[1, "DATE"]```, ```r lapply(ID.CCLna[,1], as.character)$ID[2]```  on ```r ID.CCLna[2, "DATE"]```, and ```r lapply(ID.CCLna[,1], as.character)$ID[3]```  on ```r ID.CCLna[3, "DATE"]``` ).  These turtles were excluded from the analysis.  CCL ranged from ```r min(dat.1.Cm$CCL, na.rm = T)``` cm to ```r max(dat.1.Cm$CCL, na.rm= T)``` cm with the mean of ```r signif(mean(dat.1.Cm$CCL, na.rm = T), 4)``` cm.     
 
-```{r CCL_histo, warning=FALSE, echo=FALSE}
+## Size distribution
+CCL at first captures ranged from ```r min(cov.CCL$min_CCL)``` cm to ```r max(cov.CCL$min_CCL)``` cm.  
+
+```{r CCL_histo, warning=FALSE, echo=FALSE, fig.cap="Figure 1. The distribution of CCL when turtles were caught first time."}
+
 ggplot(data = cov.CCL) +
   geom_histogram(aes(x = min_CCL),
                  binwidth = 3) +
   xlab("CCL at first capture (cm)")
 ```
 
-The size distribution of turtles at the first capture indicated that the majority of hawksbills in this area recruit as juveniles.  No apparent change in size distributions over time was detected. 
+The size distribution of turtles at the first capture indicated that the majority of green turtles in this area recruited as juveniles, although some were large.  There were pulses of small juveniles (~ 55 cm) found in some years (e.g., 2001-2005, 2008, 2013-2015; Figure 2).
+
+```{r SCL change, echo=FALSE, warning=FALSE, message = FALSE, fig.cap= "Figure 2. Change in size distributions of green turtles"}
+dat.1.Cm %>% mutate(Yr = year(DATE)) -> dat.1.Cm
+
+# dat.1.Cm %>% mutate(Year.Group = if_else(Yr>=2015, "2015-2019",
+#                                          if_else(Yr>=2010 & Yr<=2014, "2010-2014",
+#                                                  if_else(Yr>=2005 & Yr <= 2009, "2005-2009", "2000-2004")))) -> dat.1.Cm
+                    
+
+dat.1.Cm %>% group_by(ID) %>% 
+  summarize(firstCap = first(DATE),
+            firstGroup = first(Yr),
+            firstCCL = first(CCL)) %>%
+  na.omit() -> firstcap_only
+
+ggplot(data=firstcap_only, 
+       aes(x = firstCCL, 
+           y = as.factor(firstGroup)), na.rm =T)+
+  geom_density_ridges2(fill="forestgreen",
+                       jittered_points = T,
+                       position = position_points_jitter(height = 0),
+                       alpha = 0.5)+
+  labs(main="Change in size distribution", x="CCL (cm)", y="")
+```
+
 
 ```{r sizeBySeason, echo=FALSE, include=FALSE}
 dat.1.Cm %>% select(season, CCL) %>%
-  group_by(season) -> dat.1.Cm.CCL 
+  group_by(season) %>%
+  na.omit() -> dat.1.Cm.CCL 
 
 dat.1.Cm %>% select(season, CCL) %>%
   group_by(season) %>%
@@ -103,7 +134,8 @@ CCL.mean.season.Cm[is.na(CCL.mean.season.Cm$High), "High"] <- CCL.mean.season.Cm
 ```
 
 
-```{r plotSizeBySeason, echo=FALSE, warning=FALSE}
+
+```{r plotSizeBySeason, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="Figure 3. Season-specific size distributions of green turtles"}
 ggplot(data = dat.1.Cm.CCL) +
   geom_boxplot(aes(x = season, y = CCL)) +
   # geom_point(aes(x = season, 
@@ -116,21 +148,23 @@ ggplot(data = dat.1.Cm.CCL) +
   # geom_point(aes(x = season, y = max),
   #            color = "red") +
   # ylab("Mean CCL +/- 2SE (cm)") +
-  geom_text(data = CCL.mean.season.Cm, 
-            aes(x = season, y = 100,
-                label = paste0("(", n, ")")),
-            size = 2.5) +
+  # geom_text(data = CCL.mean.season.Cm, 
+  #           aes(x = season, y = 120,
+  #               label = paste0("(", n, ")")),
+  #           size = 2.5) +
   theme(axis.text.x = element_text(angle = 90,
                                    vjust = 0.5)) + 
   ylab("CCL (cm)")
 
 ```
 
+## von Bertalanffy growth function
+
 When the von Bertalanffy growth function was fitted to the length data, convergence was reached for all models according to the Gelman-Rubin Rhat statistic (Rhat < 1.1) and visual inspections of Markov chain Monte Carlo simulations (results not shown).  
 
 According to the DIC, the random L_inf and fixed k model was the best.  The median of the distribution of L_inf was ```r signif(jm.RLinf_Fk.Cm$q50$LinfMu, 2)``` cm (95% CI = ```r signif(jm.RLinf_Fk.Cm$q2.5$LinfMu, 2)``` cm - ```r signif(jm.RLinf_Fk.Cm$q97.5$LinfMu, 2)``` cm).  The median growth coefficient (k) was ```r signif(jm.RLinf_Fk.Cm$q50$k, 2)```  (95% CI = ```r signif(jm.RLinf_Fk.Cm$q2.5$k, 2)``` - ```r signif(jm.RLinf_Fk.Cm$q97.5$k, 2)```).  The median of A parameter (age at tagging minus the theoretical age at length = 0), ranged from ```r signif(min(jm.RLinf_Fk.Cm$q50$A), 3)``` to ```r signif(max(jm.RLinf_Fk.Cm$q50$A), 3)``` with the mean of ```r signif(mean(jm.RLinf_Fk.Cm$q50$A), 3)```.  All these estimates indicated slow growths of hawksbills in this environment.        
 
-```{r plot_vB, include=FALSE, echo=FALSE}
+```{r plot_vB,  echo=FALSE, fig.cap="Figure 4. Fitted von Bertalanffy growth model"}
 Linf <- jm.RLinf_Fk.Cm$q50$Linf
 k <- jm.RLinf_Fk.Cm$q50$k
 A <- jm.RLinf_Fk.Cm$q50$A
@@ -171,7 +205,7 @@ L_Exp_long$Years <- time_long$Years
 # L_Exp.lo_long$Years <- time_long$Years
 # L_Exp.hi_long$Years <- time_long$Years
 
-p.1 <- ggplot() + 
+ggplot() + 
   geom_path(data = L_Exp_long,
             aes(x = Years, y = CCL, color = ID)) +
   # geom_path(data = L_Exp.lo_long,
@@ -186,26 +220,20 @@ p.1 <- ggplot() +
 ```
 
 
-
-
-```{r pressure, echo=FALSE}
-plot(p.1)
-```
-
 ## Survival and abundance
 
 I fitted the CJS model to the capture-recapture histories for this preliminary analyses.  It may be worthwhile to explore other models, such as multi-state and robust-design, in the future.  Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (phi) and capture/recapture probability (p).  The abundance may be estimated through the Horowitz-Thompson estimator, where the number of captured individuals per temporal sampling period is divided by the estimated capture probability for that time period. The estimated survival rate should be considered as an apparent survival rate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
 
 The basic model can be extended to accomodate various modifications, such as time-dependent survival rates, time-dependent capture probability, covariate-dependent survival rates and capture probabilities.    
 
-# Methods
+### Methods
 Capture history data were pooled by sampling seasons (summer and winter). Consequently, multiple captures within each season were treated as one capture. 
 
 I considered several possible models for this analysis. For survival rates, they were treated as either constant, affected by transients (time-since-marking; TSM), a function of age class (immature < 81.6 cm CCL) or a function of size (CCL).  For capture probabilities, they were treated as either constant, time dependent, different between the first and subsequent captures (trap response), or a function of effort. A total of 10 models were fitted to the data (Table x).
 
 Analyses were conducted using a Bayesian approach using JAGS (Plummer 2018) via jagsUI (v. 1.5.1, Kellner 2019) in the R statistical environment. 
 
-# Results
+### Results
 ```{r CMR_data, include=FALSE, echo=FALSE}
 dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
@@ -231,7 +259,7 @@ data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
 
 After grouping capture records within each season, capture histories from ```r ncol(data.CJS)``` seasons (occasions) were used in the analysis. The number of capture events within each season ranged from ```r min(effort.season$effort)``` to ```r max(effort.season$effort)```, whereas the number of turtles caught per season ranged from ```r min(colSums(CJS.data$data))``` to ```r max(colSums(CJS.data$data))```.   
 
-There were ```r nrow(data.CJS)``` individuals in the capture records, where the number of captures per individual ranged from ```r min(rowSums(CJS.data$data))``` to ```r max(rowSums(CJS.data$data))```.   
+There were ```r nrow(data.CJS)``` individuals in the capture records, where the maximum number of captures per individual was ```r max(rowSums(CJS.data$data))```.   
 
 For this report, I use results from Mark because Bayesian analysis is taking a lot of time due to the large dataset.  Goodness-of-fit has been conducted and, although some questions remain as to the CJS model may not be perfect, in general, it is accepted.  
 
@@ -253,7 +281,10 @@ cm.results <- readRDS(file = "RData/CJS_Cm_RMark.rds")
 
 The comparison of the models showed that one with transients effect on survival and time-dependent capture probability was the best. 
 ```{r model_comparison, echo=FALSE}
-model.table(cm.results)
+mark.table <- model.table(cm.results)
+mark.table %>% select(model, DeltaAICc) -> mark.table.2
+
+knitr::kable(mark.table.2)
 ```
 
 This model allows us to compute the estimated proportion of residents from the two survival rates.
@@ -281,7 +312,7 @@ Nhats.df <- data.frame(season = colnames(CJS.data$data)[2:(ncol(CJS.data$data))]
 ```
 
 These seem so high! Are there that many green turtles in the area? 
-```{r}
+```{r Nhat plot, echo=FALSE, fig.cap="Figure 5. Estimated abundance of green turtles"}
 ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = Nhat)) +
   geom_errorbar(aes(x = season, ymin = lcl, ymax = ucl)) +
@@ -290,119 +321,8 @@ ggplot(data = Nhats.df) +
 
 ```
 
-The estimated survival rate was 
-
-
-<!-- ```{r sizeAndCapP, echo=FALSE, warning=FALSE} -->
-<!-- CCL.mean.season.Cm %>% left_join(phats, by = "season") -> CCL.capP.Cm -->
-<!-- ``` -->
-
-
-<!-- Capture probabilities varied over the years and declined as the number of captured turtles increased. -->
-
-<!-- ```{r plotSizeAndCapP, echo=FALSE} -->
-<!-- ggplot(data = CCL.capP.Cm) + -->
-<!--   geom_point(aes(x = season, y = estimate, size = n)) + -->
-<!--     #theme(legend.position = "none") + -->
-<!--   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + -->
-<!--   xlab("season") + -->
-<!--   ylab("Median capture probability") -->
-
-<!-- ``` -->
-
+The estimated survival rate of the residents was ```r signif(cm.results$Phi.tsm.p.t$results$real[2, "estimate"], 3)``` (SE = ```r signif(cm.results$Phi.tsm.p.t$results$real[2, "se"], 3)```, 95% CI = [```r signif(cm.results$Phi.tsm.p.t$results$real[2, "lcl"], 3)```, ```r signif(cm.results$Phi.tsm.p.t$results$real[2, "ucl"], 3)```]).   
 
 
 Results from the Bayesian approach will presented later. 
-```{r CJS_model_comparison, echo=FALSE, include=FALSE}
-# phidot.pdot <- readRDS(file = "RData/CJS_pdot_Cm_JAGS.rds")
-# phidot.pt <- readRDS(file = "RData/CJS_pt_Cm_JAGS.rds")
-# phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Cm_JAGS.rds")
-# phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Cm_JAGS.rds")
-# phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Cm_JAGS.rds")
-# phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds")
-# phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds")
-# #phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Cm_JAGS.rds")  # somehow this didn't work
-# #phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds")
-# #phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds")
-# 
-# DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
-#                              "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot"), 
-#                              #"phiAgeClass.pt", "phiAgeClass.TSM.pt"),
-#                    DIC = c(phidot.pdot$jags.out$DIC, 
-#                            phidot.pt$jags.out$DIC, 
-#                            phidot.pTrap$jags.out$DIC,
-#                            phiTSM.pt$jags.out$DIC, 
-#                            phiTSM.pEff$jags.out$DIC, 
-#                            phiTSM.pTSM$jags.out$DIC, 
-#                            phiMinCCL.pdot$jags.out$DIC))
-#                            #phiCCL.pt$jags.out$DIC,
-#                            #phiAgeClass.pt$jags.out$DIC,
-#                            #phiAgeClass.TSM.pt$jags.out$DIC))
-# 
-# arrange(DICs, DIC)
-```
-
-<!-- According to the DIC values, the best model was ```r DICs[which(DICs$DIC == min(DICs$DIC)), "model"]```; a constant survival rate and capture probability as time-dependent.  -->
-
-```{r get.stats, echo=FALSE, include=FALSE}
-# # gamma.stats.df <- data.frame(phiTSM.pt$jags.out$summary[grep("gamma", dimnames(phiTSM.pt$jags.out$summary)[[1]]),])
-# phi.stats.df <- phidot.pt$jags.out$summary["mean.phi",]
-# #phi.stats.df$season <- effort.season$season
-# 
-# p.stats.df <- data.frame(phidot.pt$jags.out$summary[grep("p[", fixed = T,  dimnames(phidot.pt$jags.out$summary)[[1]]),])
-# p.stats.df$season <- effort.season$season
-# 
-# N.stats.df <- data.frame(phidot.pt$jags.out$summary[grep("N[", fixed = T, dimnames(phidot.pt$jags.out$summary)[[1]]),])
-# N.stats.df$season <- effort.season$season
-
-```
-
-
-```{r plot.p, echo=F}
-# ggplot(data = p.stats.df) + 
-#   geom_point(aes(x = season, y = X50.)) + 
-#   geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
-#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + 
-#   ylab("Capture probability (median and 95% CI)")
-```
-
-
-```{r sizeAndCapP, echo=FALSE}
-# CCL.mean.season.Cm %>% left_join(p.stats.df, by = "season") -> CCL.capP.Cm
-```
-
-
-<!-- Capture probabilities varied over the years and declined as the number of captured turtles increased.   -->
-
-```{r plotSizeAndCapP, echo=FALSE}
-# ggplot(data = CCL.capP.Cm) + 
-#   geom_point(aes(x = season, y = X50., size = n)) + 
-#     #theme(legend.position = "none") + 
-#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-#   xlab("season") + 
-#   ylab("Median capture probability")
-
-```
-
-
-
-<!-- The median of survival rate was ```r signif(phidot.pt$jags.out$q50$mean.phi, 3)``` (95%CI = ```r signif(phidot.pt$jags.out$q2.5$mean.phi, 3)``` - ```r signif(phidot.pt$jags.out$q97.5$mean.phi, 3)```). -->
-
-<!-- ```{r plot.gamma, echo=FALSE} -->
-<!-- mcmc_dens(phidot.pt$jags.out$samples, c("mean.phi")) -->
-
-<!-- ``` -->
-
-
-
-<!-- Abundance was estimated using the HT estimator. The median abundance ranged from ```r signif(min(N.stats.df$X50.), 2)``` in ```r N.stats.df$season[which(N.stats.df$X50. == min(N.stats.df$X50.))]``` to ```r signif(max(N.stats.df$X50.), 2)``` in ```r N.stats.df$season[which(N.stats.df$X50. == max(N.stats.df$X50.))]```.  The abundance in the last few seasons seemed to be declining.  -->
-
-<!-- ```{r plot.N, echo=FALSE} -->
-<!-- ggplot(data = N.stats.df) +  -->
-<!--   geom_point(aes(x = season, y = X50.)) +  -->
-<!--   geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) +  -->
-<!--   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +  -->
-<!--   ylab("Abundance (Median and 95% CI)") -->
-<!-- ``` -->
-
 

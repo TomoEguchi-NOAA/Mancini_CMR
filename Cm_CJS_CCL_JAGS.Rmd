@@ -28,7 +28,7 @@ MCMC.params <- list(n.samples = 50000,
 
 Bring in the data file and get ready for CJS
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 MCMC.params <- list(n.samples = 80000,
                     n.burnin = 50000,
                     n.thin = 5,
@@ -135,7 +135,7 @@ if (!file.exists(paste0("RData/CJS_pt_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pt_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_pt_CCL_Cm_JAGS.rds"))
   
 } 
 
@@ -149,8 +149,8 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_CCL_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pTrapResponse.txt"
   
   m <- CH.2[, 1:(ncol(CH.2) - 1)]
-  u <- which(m == 0)
-  m[u] <- 2
+  #u <- which(m == 0)
+  m[m == 0] <- 2
   jags.data$m <- m
   
   ## parameters to monitor - when this is changed, make sure to change

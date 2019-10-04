@@ -470,7 +470,7 @@ phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_CCL_Cm_JAGS.rds")
 phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_CCL_Cm_JAGS.rds")
 phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_CCL_Cm_JAGS.rds")
 phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_CCL_Cm_JAGS.rds")
-phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds")
+#phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds")
 phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_CCL_Cm_JAGS.rds")
 phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_CCL_Cm_JAGS.rds")
 

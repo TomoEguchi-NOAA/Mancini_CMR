@@ -494,7 +494,7 @@ DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTS
 arrange(DICs, DIC)
 ```
 
-According to DIC, phi(dot) p(t) is the best.  Let's take a look at the results.
+According to DIC, phi(dot) p(t) is the best, although phi(ageclass) p(t) is a very close second.  Let's take a look at the results from the both models.
 
 <!-- gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] has a lot wider posterior. Median is lower for big ones also...  -->
 

@@ -96,8 +96,62 @@ get.data <- function(filename){
   return(dat.1)
 }
 
+get.data.Ei <- function(filename){
+  col.def <- cols(Event_ID = col_character(),
+                  Season = col_character(),
+                  Species = col_character(),
+                  Turtle_ID = col_character(),
+                  Recapture = col_character(),
+                  Location = col_character(),
+                  Start_time = col_time(format = "%H:%m"),
+                  End_time = col_time(format = "%H:%m"),
+                  Total_hrs = col_double(),
+                  Type = col_character(),
+                  Metodologia = col_character(),
+                  Longitud_lanceos = col_character(),
+                  Site_type_general = col_character(),
+                  Site_type_specific = col_character(),
+                  site_name = col_character(),
+                  Lat_Corr = col_double(),
+                  Long_Corr = col_double(),
+                  Capture_date = col_date(format = "%m/%d/%Y"),
+                  Capture_time = col_time(format = "%H:%m"),
+                  Turlte_name = col_character(),
+                  SCL = col_double(),
+                  SCW = col_double(),
+                  CCL = col_double(),
+                  CCW = col_double(),
+                  BD = col_double(),
+                  PL = col_double(),
+                  TTL = col_double(),
+                  Weight = col_double(),
+                  Sex = col_character(),
+                  tag_r_new = col_character(),
+                  tag_l_new = col_character(),
+                  tag_r_old = col_character(),
+                  tag_l_old = col_character(),
+                  Pit_tag = col_character(),
+                  pit_new = col_character(),
+                  Pit_old = col_character())
+  
+  dat.1 <- read_csv(file = filename, col_types = col.def)
+  
+  dat.1 %>% mutate(ID = as.factor(Turtle_ID),
+                   CDATE = Capture_date) %>% 
+    transmute(ID = ID,
+              season = Season,
+              detect = 1,
+              DATE = CDATE,
+              SCL = SCL,
+              CCL = CCL,
+              weight_kg = Weight,
+              sex = Sex)-> dat.1
+  
+  return(dat.1)
+}
 
-dat2CJS <- function(dat.1, save.file = FALSE){
+
+dat2CJS <- function(dat.1, save.file = FALSE, filename = "not.saved"){
   
   # Create ID by Date and assign 1s
   tmp <-melt(dat.1, 
@@ -118,7 +172,7 @@ dat2CJS <- function(dat.1, save.file = FALSE){
   
   # save file for later
   if (save.file){
-    out.name <- "data/Cm_01_CJS_pt.csv"
+    out.name <- filename
     write.csv(dat.01, 
               file = out.name, 
               row.names = T,

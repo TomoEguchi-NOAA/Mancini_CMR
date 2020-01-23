@@ -1,9 +1,9 @@
 ---
-title: "Capture recapture analyses of greens for Agnese Mancini"
+title: "Capture recapture analyses of hawksbills at Isla Espiritu Santo for Agnese Mancini"
 output: html_notebook
 ---
 
-This document describes data analysis of Agnese Mancini's data of green turtle capture recapture events using the augmented method (Kery and Schaub). This version uses only those turtles with CCL information available. 
+This document describes data analysis of Agnese Mancini's data of hawksbill turtle capture recapture events at Isla Espiritu Santo (IES) using the augmented method (Kery and Schaub). This version uses only those turtles with CCL information available. 
 
 
 Initialize the workspace
@@ -34,16 +34,15 @@ MCMC.params <- list(n.samples = 80000,
                     n.thin = 5,
                     n.chains = 5)
 
-dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
-
-dat.1 %>% filter(species == "Cm") -> dat.1.Cm
+dat.1 <- get.data.Ei("data/GTC_ICAPO_IES.csv")
 
 # Use CCL as a covariate.
-dat.1.Cm %>% select(ID, CCL) %>% group_by(ID) %>%
+dat.1 %>% select(ID, CCL) %>% group_by(ID) %>%
   summarise(min_CCL = min(CCL, na.rm = T)) %>%
   filter(!is.infinite(min_CCL)) -> data.CCL
 
-CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
+# if save.file = TRUE, provide filename = some file name. 
+CJS.data <- dat2CJS(dat.1, save.file = FALSE)
 
 CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
 
@@ -81,7 +80,7 @@ Then run JAGS:
 Pdot model
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pdot_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pdot_CCL_Ei_IES_JAGS.rds"))){
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
   parameters <- c("mean.p", "mean.phi", "N", "deviance")
@@ -106,14 +105,14 @@ if (!file.exists(paste0("RData/CJS_pdot_CCL_Cm_JAGS.rds"))){
   out.list <- list(jags.out = jm.pdot,
                    jags.data = jags.data)
   
-  saveRDS(out.list, file = paste0("RData/CJS_pdot_CCL_Cm_JAGS.rds"))
+  saveRDS(out.list, file = paste0("RData/CJS_pdot_CCL_Ei_IES_JAGS.rds"))
   
 }
 ```
 
 pt
 ```{r}
-if (!file.exists(paste0("RData/CJS_pt_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pt_CCL_EI_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pt.txt"
   
   ## parameters to monitor - when this is changed, make sure to change
@@ -135,7 +134,7 @@ if (!file.exists(paste0("RData/CJS_pt_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pt_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_pt_CCL_Ei_IES_JAGS.rds"))
   
 } 
 
@@ -145,7 +144,7 @@ if (!file.exists(paste0("RData/CJS_pt_CCL_Cm_JAGS.rds"))){
 Try the trap response model:
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pTrapResponse_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pTrapResponse_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pTrapResponse.txt"
   
   m <- CH.2[, 1:(ncol(CH.2) - 1)]
@@ -172,7 +171,7 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pTrapResponse_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_pTrapResponse_CCL_Ei_IES_JAGS.rds"))
   
 } 
 
@@ -181,7 +180,7 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_CCL_Cm_JAGS.rds"))){
 Time-since-marking - looking at the transients effect on survival 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pt_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pt_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pt.txt"
   
   first.cap <- jags.data$f
@@ -211,7 +210,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pt_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pt_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pt_CCL_Ei_IES_JAGS.rds"))
 }
 ```
 
@@ -219,7 +218,7 @@ Time since marking for both phi and p:
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pTSM.txt"
   
   first.cap <- jags.data$f
@@ -249,7 +248,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pTSM_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pTSM_CCL_Ei_IES_JAGS.rds"))
 }
 ```
 
@@ -257,11 +256,11 @@ Time since marking for phi and effort for p:
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pEffort.txt"
   
   # need to count how many capture events occured per season
-  dat.1.Cm %>% select(season, "DATE") %>% 
+  dat.1 %>% select(season, "DATE") %>% 
   group_by(season) %>% #-> tmp3
   summarise(effort = n_distinct(DATE)) -> effort.season
   
@@ -295,7 +294,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pEff_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pEff_CCL_Ei_IES_JAGS.rds"))
 }
 ```
 
@@ -304,7 +303,7 @@ pt with minimumn CCL as a covariate for survival.
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiMinCCL_pdot.txt"
 
   jags.data$x <- as.vector(t(cov.CCL))
@@ -328,7 +327,7 @@ if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiMinCCL_pdot_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_PhiMinCCL_pdot_CCL_Ei_IES_JAGS.rds"))
   
 } 
 ```
@@ -339,9 +338,9 @@ How about time-varying CCL individual covariate? It's possible to use the von Be
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiCCL_pt_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
-  dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
+  dat.1.CCL <- dat2CJS_covCCL(dat.1)
   data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
     select(-c(ID, min_CCL)) -> dat.2.CCL
 
@@ -368,7 +367,7 @@ if (!file.exists(paste0("RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
 
   saveRDS(out.list,
-          file = paste0("RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_PhiCCL_pt_CCL_Ei_IES_JAGS.rds"))
 }
 
 ```
@@ -378,11 +377,11 @@ Age class for survival rate:
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_pt.txt"
   
   ageclass.mat <- matrix(1, nrow = nrow(CH.2), ncol = ncol(CH.2))
-  ageclass.mat[which(CCL.mat >= 90.0)] <- 2
+  ageclass.mat[which(CCL.mat >= 60.0)] <- 2
   k <- 1
   for ( k in 1:nrow(ageclass.mat)){
     idx.2 <- which(ageclass.mat[k,] == 2)
@@ -412,7 +411,7 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiAgeClass_pt_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_PhiAgeClass_pt_CCL_Ei_IES_JAGS.rds"))
 }
 
 ```
@@ -420,7 +419,7 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_CCL_Cm_JAGS.rds"))){
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Cm_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_TSM_pt.txt"
   
   first.cap <- jags.data$f
@@ -457,22 +456,22 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Cm_JAGS.rds"))){
                    jags.data = jags.data)
 
   saveRDS(out.list,
-          file = paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Cm_JAGS.rds"))
+          file = paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Ei_IES_JAGS.rds"))
 }
 ```
 Look at the results and compare which model may be better:
 
 ```{r}
-phidot.pdot <- readRDS(file = "RData/CJS_pdot_CCL_Cm_JAGS.rds")
-phidot.pt <- readRDS(file = "RData/CJS_pt_CCL_Cm_JAGS.rds")
-phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_CCL_Cm_JAGS.rds")
-phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_CCL_Cm_JAGS.rds")
-phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_CCL_Cm_JAGS.rds")
-phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_CCL_Cm_JAGS.rds")
-phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_CCL_Cm_JAGS.rds")
+phidot.pdot <- readRDS(file = "RData/CJS_pdot_CCL_Ei_IES_JAGS.rds")
+phidot.pt <- readRDS(file = "RData/CJS_pt_CCL_Ei_IES_JAGS.rds")
+phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_CCL_Ei_IES_JAGS.rds")
+phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_CCL_Ei_IES_JAGS.rds")
+phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_CCL_Ei_IES_JAGS.rds")
+phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_CCL_Ei_IES_JAGS.rds")
+phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_CCL_Ei_IES_JAGS.rds")
 #phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds")
-phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_CCL_Cm_JAGS.rds")
-phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_CCL_Cm_JAGS.rds")
+phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_CCL_Ei_IES_JAGS.rds")
+phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_CCL_Ei_IES_JAGS.rds")
 
 ```
 
@@ -495,26 +494,26 @@ DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTS
 arrange(DICs, DIC)
 ```
 
-According to DIC, phi(AgeClass) p(t) is the best.  Let's take a look at the results.
+According to DIC, phi(dot) p(t) is the best.  Let's take a look at the results.
 
-gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] has a lot wider posterior. Median is lower for big ones also... 
+<!-- gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] has a lot wider posterior. Median is lower for big ones also...  -->
+
+<!-- ```{r} -->
+<!-- mcmc_dens(phiAgeClass.pt$jags.out$samples, c("gamma[1]", "gamma[2]")) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- gamma.stats <- phiAgeClass.pt$jags.out$summary[grep("gamma",  -->
+<!--                                                dimnames(phiAgeClass.pt$jags.out$summary)[[1]]),] -->
+<!-- gamma.stats -->
+<!-- ``` -->
+
 
 ```{r}
-mcmc_dens(phiAgeClass.pt$jags.out$samples, c("gamma[1]", "gamma[2]"))
-```
-
-```{r}
-gamma.stats <- phiAgeClass.pt$jags.out$summary[grep("gamma", 
-                                               dimnames(phiAgeClass.pt$jags.out$summary)[[1]]),]
-gamma.stats
-```
-
-
-```{r}
-p.stats <- phiAgeClass.pt$jags.out$summary[grep("p[", 
-                                           dimnames(phiAgeClass.pt$jags.out$summary)[[1]],
-                                           fixed = TRUE),]
-p.stats
+# p.stats <- phiAgeClass.pt$jags.out$summary[grep("p[", 
+#                                            dimnames(phiAgeClass.pt$jags.out$summary)[[1]],
+#                                            fixed = TRUE),]
+# p.stats
 ```
 
 

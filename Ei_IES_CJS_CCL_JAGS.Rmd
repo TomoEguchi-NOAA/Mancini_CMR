@@ -16,7 +16,6 @@ library(reshape)
 library(bayesplot)
 library(ggridges)
 
-
 source("Mancini_functions.R")
 
 MCMC.params <- list(n.samples = 50000,
@@ -80,7 +79,7 @@ Then run JAGS:
 Pdot model
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pdot_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pdot_Ei_IES_JAGS.rds"))){
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
   parameters <- c("mean.p", "mean.phi", "N", "deviance")
@@ -105,14 +104,30 @@ if (!file.exists(paste0("RData/CJS_pdot_CCL_Ei_IES_JAGS.rds"))){
   out.list <- list(jags.out = jm.pdot,
                    jags.data = jags.data)
   
-  saveRDS(out.list, file = paste0("RData/CJS_pdot_CCL_Ei_IES_JAGS.rds"))
+  saveRDS(out.list, file = paste0("RData/CJS_pdot_Ei_IES_JAGS.rds"))
   
+} else {
+  out.list <- readRDS(file = "RData/CJS_pdot_Ei_IES_JAGS.rds")
+
 }
+```
+
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples, 
+                 pars = c("mean.p", "mean.phi"))
+
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
 ```
 
 pt
 ```{r}
-if (!file.exists(paste0("RData/CJS_pt_CCL_EI_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pt_EI_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pt.txt"
   
   ## parameters to monitor - when this is changed, make sure to change
@@ -134,17 +149,34 @@ if (!file.exists(paste0("RData/CJS_pt_CCL_EI_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pt_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_pt_Ei_IES_JAGS.rds"))
   
-} 
+} else {
+  out.list <- readRDS(file = "RData/CJS_pt_Ei_IES_JAGS.rds")
+}
 
 ```
 
+Look at the trace plots and other convergence diagnostics (first 10 p's)
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c("p[1]", "p[2]", "p[3]", "p[4]",
+                          "p[5]", "p[6]", "p[7]", "p[8]", "p[9]"))
 
-Try the trap response model:
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+
+
+Try the trap response model. This model has two capture probabilities (beta[1] and beta[2]). The first one is the capture probability of the first capture and the second is the subsequent capture probability.   
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pTrapResponse_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pTrapResponse.txt"
   
   m <- CH.2[, 1:(ncol(CH.2) - 1)]
@@ -171,16 +203,38 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pTrapResponse_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_pTrapResponse_Ei_IES_JAGS.rds"))
   
-} 
+} else {
+  out.list <- readRDS(file = "RData/CJS_pTrapresponse_Ei_IES_JAGS.rds")
+
+}
 
 ```
 
-Time-since-marking - looking at the transients effect on survival 
+
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c("beta[1]", "beta[2]", "mean.phi"))
+
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+
+
+Time-since-marking - looking at the transients effect on survival. This model has two survival parameters; gamma[1] and gamma[2].  The proportion of transients is computed as 1 - gamma[1]/gamma[2]. See Chapter 7 of Mark book for the details. Briefly...
+
+Let N_t and N_r be the number of animals released at the first time period that are transients (t) and residents (r). At the second time period, only the residents will be counted so the expected number of animals alive at the next time period is phi_r N_r, where phi_r is the survival probability of the residents. The apparent survival probability is (phi_r N_r)/(N_r + N_t).  From the second to third time periods, the population consists of only residents. The survival of the first interval ((phi_r N_r)/(N_r + N_t)) divided by the survival of residents (or the survival after the first interval = phi_r) is {(phi_r N_r)/(N_r + N_t)}/phi_r = N_r/(N_r + N_t), which is the proportion of residents in the sample. 
+
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pt_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pt.txt"
   
   first.cap <- jags.data$f
@@ -210,15 +264,31 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pt_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pt_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds"))
+} else {
+  out.list <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds")
+
 }
+```
+
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c("gamma[1]", "gamma[2]", "prop.trans"))
+
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
 ```
 
 Time since marking for both phi and p:
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pTSM.txt"
   
   first.cap <- jags.data$f
@@ -248,15 +318,33 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pTSM_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds"))
+} else {
+  out.list <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds")
+
 }
 ```
 
-Time since marking for phi and effort for p:
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c("gamma[1]", "gamma[2]", 
+                          "beta[1]", "beta[2]", "prop.trans"))
+
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+
+Time since marking for phi and effort for p. There are two survival rates gamma[1] and gamma[2]. For capture probabilities, we have an intercept (mu) and slope (beta) as the logit-linear model. 
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pEffort.txt"
   
   # need to count how many capture events occured per season
@@ -294,16 +382,45 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pEff_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pEff_Ei_IES_JAGS.rds"))
+} else {
+  out.list <- readRDS(file = "RData/CJS_PhiTSM_pEff_Ei_IES_JAGS.rds")
+  
 }
 ```
 
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c("gamma[1]", "gamma[2]", 
+                          "mu", "beta", "prop.trans"))
 
-pt with minimumn CCL as a covariate for survival. 
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+It appears that some convergence failure happened. Take a look at the summary statistics.
+
+```{r}
+out.list$jags.out$summary %>% as.data.frame() %>% 
+  rownames_to_column(var = "parameter") %>%
+  select("parameter", "mean", "sd", "Rhat") %>%
+  filter(Rhat > 1.01) -> summary.df
+
+summary.df
+```
+
+Some N's are not converging... Not a good candidate model. 
+
+pt with minimumn CCL as a covariate for survival. logit of survival rate is a linear function of minimum CCL. mu is the intercept, beta is the slope.  
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiMinCCL_pdot.txt"
 
   jags.data$x <- as.vector(t(cov.CCL))
@@ -327,18 +444,33 @@ if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiMinCCL_pdot_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds"))
   
-} 
+} else {
+  out.list <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds")
+
+}
 ```
 
-Trace plots look not so good.  
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c("mean.p", "mu", "beta"))
 
-How about time-varying CCL individual covariate? It's possible to use the von Bert equations to fill in all missing values...  but will that help any?
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+
+How about time-varying CCL individual covariate? 
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiCCL_pt_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
   dat.1.CCL <- dat2CJS_covCCL(dat.1)
   data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
@@ -367,21 +499,59 @@ if (!file.exists(paste0("RData/CJS_PhiCCL_pt_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
 
   saveRDS(out.list,
-          file = paste0("RData/CJS_PhiCCL_pt_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds"))
+} else {
+  out.list <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds")
+
 }
 
 ```
 
 
-Age class for survival rate:
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c( "mu", "beta", "p[1]", "p[2]",
+                           "p[3]", "p[4]", "p[5]", "p[6]", "p[7]"))
+
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+
+
+Age class for survival rate. Adults are CCL >= 69.0 cm per email from Agnese on 1/22/2020.
+
+Email from Agnese starts here:
+Hi Tomo,
+
+I had this discussion with Catherine Hart because they have some nestings of hawksbill in Nayarit.
+So they use a Curved Carapace Length (CCL) of 69 cm to separate adults and subadults, and they have recorded nesting hakwsbills of 73 cm (CCL, minimum size).
+So the hawksbill turtles nesting here are more in line with the sizes they have in Costa Rica, i think for them a CCL of 62 is already an adult.
+
+Does this make sense? We actually had some issues classifying our turtles based on some published data from other areas for which adulthood was at much bigger sizes but after talking to Catherine and considering we got some 'small' males, it seems much more reasonable use a tentative 69 cm that will require a few more studies for confirmation.
+
+Am I making sense?
+
+Thanks again!
+Best,
+A.
+
+End of email
+
+This model has two survival rates gamma[1] and gamma[2] for juvenile and adult survival, respectively. 
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_pt.txt"
   
   ageclass.mat <- matrix(1, nrow = nrow(CH.2), ncol = ncol(CH.2))
-  ageclass.mat[which(CCL.mat >= 60.0)] <- 2
+  ageclass.mat[which(CCL.mat >= 69.0)] <- 2
   k <- 1
   for ( k in 1:nrow(ageclass.mat)){
     idx.2 <- which(ageclass.mat[k,] == 2)
@@ -411,15 +581,35 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiAgeClass_pt_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds"))
+} else {
+  out.list <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds")
+
 }
 
 ```
 
 
+
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c( "gamma[1]", "gamma[2]", "p[1]", "p[2]",
+                           "p[3]", "p[4]", "p[5]", "p[6]", "p[7]"))
+
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+Age class specific and TSM survival and time-specific capture probabilities. There are four possibilities: juvenile and first capture, juvenile and non-first captures, adult and first capture, and adult and non-first captures. 
+
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_TSM_pt.txt"
   
   first.cap <- jags.data$f
@@ -456,45 +646,76 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
 
   saveRDS(out.list,
-          file = paste0("RData/CJS_PhiAgeClass_TSM_pt_CCL_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds"))
+} else {
+  out.list <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds")
+  
 }
 ```
+
+
+
+Look at the trace plots and other convergence diagnostics
+```{r}
+p1 <- mcmc_trace(out.list$jags.out$samples,
+                 pars = c( "gamma[1]", "gamma[2]", "gamma[3]", "gamma[4]",
+                           "p[1]", "p[2]", "p[3]", "p[4]", "p[5]"))
+
+p1
+```
+
+Summary:
+```{r}
+summary(out.list$jags.out)
+```
+
+So, only one model PhiTSM.pEff didn't convere well.  
+
 Look at the results and compare which model may be better:
 
 ```{r}
-phidot.pdot <- readRDS(file = "RData/CJS_pdot_CCL_Ei_IES_JAGS.rds")
-phidot.pt <- readRDS(file = "RData/CJS_pt_CCL_Ei_IES_JAGS.rds")
-phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_CCL_Ei_IES_JAGS.rds")
-phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_CCL_Ei_IES_JAGS.rds")
-phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_CCL_Ei_IES_JAGS.rds")
-phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_CCL_Ei_IES_JAGS.rds")
-phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_CCL_Ei_IES_JAGS.rds")
-#phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds")
-phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_CCL_Ei_IES_JAGS.rds")
-phiAgeClass.TSM.pt <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_CCL_Ei_IES_JAGS.rds")
 
+phidot.pdot <- readRDS(file = "RData/CJS_pdot_Ei_IES_JAGS.rds")
+phidot.pt <- readRDS(file = "RData/CJS_pt_Ei_IES_JAGS.rds")
+phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Ei_IES_JAGS.rds")
+phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds")
+#phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds")
+phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds")
+phiMinCCL.pdot <- readRDS(file =  "RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds")
+phiAgeClass.pt <- readRDS(file =  "RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds")
+phiAgeClass.TSM.pt <- readRDS(file =  "RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds")
+
+phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds")
 ```
 
 Look at DICs - although they are not great for model comparison...
 
 ```{r}
 DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
-                             "phiTSM.pEff", "phiTSM.pTSM", "phiMinCCL.pdot",
+                             "phiTSM.pTSM", "phiMinCCL.pdot", "phiCCL.pt",
                              "phiAgeClass.pt", "phiAgeClass.TSM.pt"),
                    DIC = c(phidot.pdot$jags.out$DIC, 
                            phidot.pt$jags.out$DIC, 
                            phidot.pTrap$jags.out$DIC,
                            phiTSM.pt$jags.out$DIC, 
-                           phiTSM.pEff$jags.out$DIC, 
                            phiTSM.pTSM$jags.out$DIC, 
                            phiMinCCL.pdot$jags.out$DIC,
+                           phiCCL.pt$jags.out$DIC,
                            phiAgeClass.pt$jags.out$DIC,
                            phiAgeClass.TSM.pt$jags.out$DIC))
 
 arrange(DICs, DIC)
 ```
 
-According to DIC, phi(dot) p(t) is the best, although phi(ageclass) p(t) is a very close second.  Let's take a look at the results from the both models.
+According to DIC, phi(CCL) p(t) is the best, although phi(dot) p(t) is okay.  Let's take a look at the results from the first model.
+
+```{r}
+phiCCL.pt$jags.out$summary %>% as.data.frame() %>% rownames_to_column(var = "Parameter") %>%
+  select(Parameter, mean, sd, "2.5%", "50%", "97.5%", Rhat) -> phiCCL.pt.df
+
+phiCCL.pt.df
+```
+
 
 <!-- gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] has a lot wider posterior. Median is lower for big ones also...  -->
 
@@ -510,10 +731,10 @@ According to DIC, phi(dot) p(t) is the best, although phi(ageclass) p(t) is a ve
 
 
 ```{r}
-# p.stats <- phiAgeClass.pt$jags.out$summary[grep("p[", 
-#                                            dimnames(phiAgeClass.pt$jags.out$summary)[[1]],
-#                                            fixed = TRUE),]
-# p.stats
+p.stats <- phiCCL.pt$jags.out$summary[grep("p[",
+                                           dimnames(phiCCL.pt$jags.out$summary)[[1]],
+                                           fixed = TRUE),]
+p.stats
 ```
 
 
@@ -522,8 +743,8 @@ Survival rates of residents were about 0.6/yr.  Kinda low...
 Using the H-T estimator, we also computed the abundance for each sampling occasion:
 
 ```{r}
-N.stats <- phiAgeClass.pt$jags.out$summary[grep("N[", 
-                                           dimnames(phiAgeClass.pt$jags.out$summary)[[1]],
+N.stats <- phiCCL.pt$jags.out$summary[grep("N[", 
+                                           dimnames(phiCCL.pt$jags.out$summary)[[1]],
                                            fixed = TRUE),]
 
 N.stats.df <- data.frame(N.stats)

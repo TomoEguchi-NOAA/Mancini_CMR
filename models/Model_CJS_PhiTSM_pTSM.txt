@@ -2,6 +2,15 @@
 # on survival and capture probabilities - 
 # converted from trap response model on p.212 of Kery and 
 # Schaub
+# There are two survival rates, which correspond to the year after the first marking and the rest. 
+# There also are two capture probabilities, which correspond to the first marking and the rest. 
+#
+# The time since marking (TSM) models are described well in Chapter 7
+# of the MARK book. Starting around p. 7-40, they describe how the survival
+# rates of the first and the rest provide evidence for transients. In the
+# sidebar on p. 7-44 explains how the ratio between the two estimated
+# survival rates from a TSM model can be used to estimate the proportion of 
+# transients (or residents).  
 
 model {
 
@@ -21,7 +30,7 @@ model {
      beta[u] ~ dbeta(5, 2)
   }
 
-  prop.trans <- gamma[1]/gamma[2]
+  prop.trans <- 1 - (gamma[1]/gamma[2])
 
   # Likelihood:
   for (i in 1:nind){

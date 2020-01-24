@@ -5,15 +5,9 @@
 model {
   for (i in 1:nind){
     logit(phi[i]) <- mu + beta * x[i] + epsilon[i]
-  }
-
-  #for (i in 1:nind){
-  #  for (t in f[i]:(n.occasions-1)){
-  #    p[i, t] <- mean.p
-  #  }
   #}
-
-  for (i in 1:nind){
+  #
+  #for (i in 1:nind){
     epsilon[i] ~ dnorm(0, tau)
   }
 

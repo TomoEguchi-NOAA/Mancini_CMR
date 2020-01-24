@@ -106,6 +106,8 @@ if (!file.exists(paste0("RData/CJS_pdot_Cm_JAGS.rds"))){
   
   saveRDS(out.list, file = paste0("RData/CJS_pdot_Cm_JAGS.rds"))
   
+} else {
+  phidot.pdot <- readRDS(file = "RData/CJS_pdot_Cm_JAGS.rds")
 }
 ```
 
@@ -135,7 +137,10 @@ if (!file.exists(paste0("RData/CJS_pt_Cm_JAGS.rds"))){
   saveRDS(out.list, 
           file = paste0("RData/CJS_pt_Cm_JAGS.rds"))
   
-} 
+} else {
+  phidot.pt <- readRDS(file = "RData/CJS_pt_Cm_JAGS.rds")
+
+}
 
 ```
 
@@ -172,7 +177,10 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_Cm_JAGS.rds"))){
   saveRDS(out.list, 
           file = paste0("RData/CJS_pTrapResponse_Cm_JAGS.rds"))
   
-} 
+} else {
+  phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Cm_JAGS.rds")
+
+}
 
 ```
 
@@ -210,6 +218,9 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Cm_JAGS.rds"))){
   
   saveRDS(out.list, 
           file = paste0("RData/CJS_PhiTSM_pt_Cm_JAGS.rds"))
+} else {
+  phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Cm_JAGS.rds")
+
 }
 ```
 
@@ -248,6 +259,9 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds"))){
   
   saveRDS(out.list, 
           file = paste0("RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds"))
+} else {
+  phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds")
+
 }
 ```
 
@@ -294,6 +308,9 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Cm_JAGS.rds"))){
   
   saveRDS(out.list, 
           file = paste0("RData/CJS_PhiTSM_pEff_Cm_JAGS.rds"))
+} else {
+  phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Cm_JAGS.rds")
+
 }
 ```
 
@@ -375,7 +392,9 @@ if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds"))){
   saveRDS(out.list, 
           file = paste0("RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds"))
   
-} 
+} else {
+  phiMinCCL_pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds")
+}
 ```
 
 Trace plots look not so good.  
@@ -478,6 +497,8 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds"))){
   
   saveRDS(out.list, 
           file = paste0("RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds"))
+} else {
+  phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds")
 }
 
 ```
@@ -537,6 +558,8 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds"))){
 
   saveRDS(out.list,
           file = paste0("RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds"))
+} else {
+  phiAgeClass.TSM.pt <- readRDS("RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds")
 }
 ```
 Look at the results and compare which model may be better:
@@ -548,6 +571,8 @@ phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Cm_JAGS.rds")
 phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Cm_JAGS.rds")
 phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pEff_Cm_JAGS.rds")
 phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds")
+
+# The following didn't do so well wrt trace plots (I think...)
 # phiMinCCL.pdot <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds")
 # phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Cm_JAGS.rds")
 # phiAgeClass.pt <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds")

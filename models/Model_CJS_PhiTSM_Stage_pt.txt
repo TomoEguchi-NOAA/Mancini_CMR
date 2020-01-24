@@ -23,7 +23,7 @@ model {
      gamma[u] ~ dbeta(5, 2)
   }
 
-  prop.trans <- (gamma[1] + gamma[2])/(gamma[3] + gamma[4])
+  prop.trans <- 1 - ((gamma[1] + gamma[2])/(gamma[3] + gamma[4]))
 
   # Likelihood:
   for (i in 1:nind){

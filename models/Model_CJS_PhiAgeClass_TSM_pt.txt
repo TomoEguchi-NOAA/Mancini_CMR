@@ -1,10 +1,12 @@
 # Cormack-Jolly-Seber model - p.179 on Kery and 
 # Schaub, with individual- and time-specific covariate on survival
 
+# age class specific and TSM survival. There are 4 possibilities
+
 model {
   for (i in 1:nind){
      for (t in f[i]:(n.occasions-1)){
-         phi[i, t] <- gamma[m[i,t]]  #logit(phi[i, t]) <- mu + beta * x[i, t] + epsilon[i]
+         phi[i, t] <- gamma[m[i,t]]  
      }
      #epsilon[i] ~ dnorm(0, tau)
   }
@@ -19,14 +21,9 @@ model {
      gamma[u] ~ dbeta(5, 2)
   }
 
-  #mean.phi ~ dbeta(5, 2) #unif(0,1)
-  #mu <- log(mean.phi / (1 - mean.phi))
-
   beta ~ dnorm(0, 0.01)
   sigma ~ dunif(0, 3)
   tau <- pow(sigma, -2)
-  #sigma2 <- pow(sigma, 2)
-  #mean.p ~ dbeta(5, 2)  #dunif(0,1)
 
   # Likelihood:
   for (i in 1:nind){

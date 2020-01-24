@@ -3,7 +3,7 @@ title: "Capture recapture analyses for Agnese Mancini"
 output: html_notebook
 ---
 
-This document describes data analysis of Agnese Mancini's data of hawksbill turtle capture recapture events. 
+This document describes data analysis of Agnese Mancini's data of hawksbill turtle capture recapture events at Isla Espiritu Santo (IES) using Mark. 
 
 
 Initialize the workspace
@@ -25,7 +25,7 @@ do_analysis <- function(dp, ddl)
   # create formulas for Phi
   # tsm is time-since-marking; check for transient effects
   Phi.dot <-  list(formula = ~ 1)  
-  Phi.CCL <- list(formula= ~ min_CCL)   # only 3 missing data for Ei so let's include this
+  #Phi.CCL <- list(formula= ~ min_CCL)   # only 3 missing data for Ei so let's include this
   #Phi.t <- list(formula = ~ time)             # we never have this model worked for turtles... 
   #Phi.season <- list(formula = ~ sum_win)      # this also is unlikely... 
   #Phi.transience <- list(formula = ~ Transient)
@@ -60,14 +60,9 @@ do_analysis <- function(dp, ddl)
 Bring in the data file and get ready for CJS.  There are few captures at the beginning and some no capture seasons also.  I wonder if this may be an issue for running CJS... 
 
 ```{r warning=F}
-dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
-
-dat.1 %>% filter(species == "Ei") -> dat.1.Ei
+dat.1.Ei <- get.data.Ei("data/GTC_ICAPO_IES.csv")
 
 CJS.data <- dat2CJS(dat.1.Ei, save.file = FALSE)
-
-
-
 
 CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
 
@@ -185,7 +180,7 @@ Compare results using AICc:
 model.table(ei.results)
 ```
 
-According to AICc, the best one is Phi(tsm)p(time). But c-hat > 7.5!  Obviously, this isn't a great model... What to do? 
+According to AICc, the best ones are Phi(dot)p(time and) Phi(tsm)p(time). But c-hat > 7.5!  Obviously, this isn't a great model... What to do? 
 
 Look at the estimates:
 ```{r}

@@ -1,9 +1,9 @@
 ---
-title: "Capture recapture analyses of hawksbills at Isla Espiritu Santo for Agnese Mancini"
+title: "Capture recapture analyses of hawksbills at Cabo Pulmo for Agnese Mancini"
 output: html_notebook
 ---
 
-This document describes data analysis of Agnese Mancini's data of hawksbill turtle capture recapture events at Isla Espiritu Santo (IES) using the augmented method (Kery and Schaub). This version uses only those turtles with CCL information available. 
+This document describes data analysis of Agnese Mancini's data of hawksbill turtle capture recapture events at Cabo Pulmo (CPU) using the augmented method (Kery and Schaub). Because many don't have 
 
 
 Initialize the workspace
@@ -28,12 +28,7 @@ MCMC.params <- list(n.samples = 50000,
 Bring in the data file and get ready for CJS
 
 ```{r warning=FALSE, message=FALSE}
-MCMC.params <- list(n.samples = 80000,
-                    n.burnin = 50000,
-                    n.thin = 5,
-                    n.chains = 5)
-
-dat.1 <- get.data.Ei("data/GTC_ICAPO_IES.csv")
+dat.1 <- get.data.Ei("data/GTC_ICAPO_CPU.csv")
 
 # Use CCL as a covariate.
 dat.1 %>% select(ID, CCL) %>% group_by(ID) %>%
@@ -79,7 +74,7 @@ Then run JAGS:
 Pdot model
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pdot_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pdot_Ei_CPU_JAGS.rds"))){
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
   parameters <- c("mean.p", "mean.phi", "N", "deviance")
@@ -104,10 +99,10 @@ if (!file.exists(paste0("RData/CJS_pdot_Ei_IES_JAGS.rds"))){
   out.list <- list(jags.out = jm.pdot,
                    jags.data = jags.data)
   
-  saveRDS(out.list, file = paste0("RData/CJS_pdot_Ei_IES_JAGS.rds"))
+  saveRDS(out.list, file = paste0("RData/CJS_pdot_Ei_CPU_JAGS.rds"))
   
 } else {
-  out.list <- readRDS(file = "RData/CJS_pdot_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_pdot_Ei_CPU_JAGS.rds")
 
 }
 ```
@@ -127,7 +122,7 @@ summary(out.list$jags.out)
 
 pt
 ```{r}
-if (!file.exists(paste0("RData/CJS_pt_EI_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pt_EI_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pt.txt"
   
   ## parameters to monitor - when this is changed, make sure to change
@@ -149,10 +144,10 @@ if (!file.exists(paste0("RData/CJS_pt_EI_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pt_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_pt_Ei_CPU_JAGS.rds"))
   
 } else {
-  out.list <- readRDS(file = "RData/CJS_pt_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_pt_Ei_CPU_JAGS.rds")
 }
 
 ```
@@ -161,7 +156,7 @@ Look at the trace plots and other convergence diagnostics (first 10 p's)
 ```{r}
 p1 <- mcmc_trace(out.list$jags.out$samples,
                  pars = c("p[1]", "p[2]", "p[3]", "p[4]",
-                          "p[5]", "p[6]", "p[7]", "p[8]", "p[9]"))
+                          "p[5]", "p[6]", "p[7]", "p[8]", "mean.phi"))
 
 p1
 ```
@@ -176,7 +171,7 @@ summary(out.list$jags.out)
 Try the trap response model. This model has two capture probabilities (beta[1] and beta[2]). The first one is the capture probability of the first capture and the second is the subsequent capture probability.   
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_pTrapResponse.txt"
   
   m <- CH.2[, 1:(ncol(CH.2) - 1)]
@@ -203,10 +198,10 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_pTrapResponse_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_pTrapResponse_Ei_CPU_JAGS.rds"))
   
 } else {
-  out.list <- readRDS(file = "RData/CJS_pTrapresponse_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_pTrapresponse_Ei_CPU_JAGS.rds")
 
 }
 
@@ -234,7 +229,7 @@ Let N_t and N_r be the number of animals released at the first time period that 
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pt.txt"
   
   first.cap <- jags.data$f
@@ -264,9 +259,9 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pt_Ei_CPU_JAGS.rds"))
 } else {
-  out.list <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_CPU_JAGS.rds")
 
 }
 ```
@@ -288,7 +283,7 @@ Time since marking for both phi and p:
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pTSM.txt"
   
   first.cap <- jags.data$f
@@ -318,9 +313,9 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pTSM_Ei_CPU_JAGS.rds"))
 } else {
-  out.list <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_CPU_JAGS.rds")
 
 }
 ```
@@ -344,7 +339,7 @@ Time since marking for phi and effort for p. There are two survival rates gamma[
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiTSM_pEffort.txt"
   
   # need to count how many capture events occured per season
@@ -382,9 +377,9 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiTSM_pEff_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiTSM_pEff_Ei_CPU_JAGS.rds"))
 } else {
-  out.list <- readRDS(file = "RData/CJS_PhiTSM_pEff_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_PhiTSM_pEff_Ei_CPU_JAGS.rds")
   
 }
 ```
@@ -420,7 +415,7 @@ pt with minimumn CCL as a covariate for survival. logit of survival rate is a li
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiMinCCL_pdot.txt"
 
   jags.data$x <- as.vector(t(cov.CCL))
@@ -444,10 +439,10 @@ if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiMinCCL_pdot_Ei_CPU_JAGS.rds"))
   
 } else {
-  out.list <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_PhiMinCCL_pdot_Ei_CPU_JAGS.rds")
 
 }
 ```
@@ -466,11 +461,22 @@ summary(out.list$jags.out)
 ```
 
 
+```{r}
+out.list$jags.out$summary %>% as.data.frame() %>% 
+  rownames_to_column(var = "parameter") %>%
+  select("parameter", "mean", "sd", "Rhat") %>%
+  filter(Rhat > 1.01) -> summary.df
+
+summary.df
+```
+
+Not good... 
+
 How about time-varying CCL individual covariate? 
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
   dat.1.CCL <- dat2CJS_covCCL(dat.1)
   data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
@@ -499,9 +505,9 @@ if (!file.exists(paste0("RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
 
   saveRDS(out.list,
-          file = paste0("RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiCCL_pt_Ei_CPU_JAGS.rds"))
 } else {
-  out.list <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_CPU_JAGS.rds")
 
 }
 
@@ -547,7 +553,7 @@ This model has two survival rates gamma[1] and gamma[2] for juvenile and adult s
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_pt.txt"
   
   ageclass.mat <- matrix(1, nrow = nrow(CH.2), ncol = ncol(CH.2))
@@ -581,9 +587,9 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
   
   saveRDS(out.list, 
-          file = paste0("RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiAgeClass_pt_Ei_CPU_JAGS.rds"))
 } else {
-  out.list <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_PhiAgeClass_pt_Ei_CPU_JAGS.rds")
 
 }
 
@@ -609,7 +615,7 @@ Age class specific and TSM survival and time-specific capture probabilities. The
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds"))){
+if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_CPU_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_TSM_pt.txt"
   
   first.cap <- jags.data$f
@@ -646,9 +652,9 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds"))){
                    jags.data = jags.data)
 
   saveRDS(out.list,
-          file = paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds"))
+          file = paste0("RData/CJS_PhiAgeClass_TSM_pt_Ei_CPU_JAGS.rds"))
 } else {
-  out.list <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds")
+  out.list <- readRDS(file = "RData/CJS_PhiAgeClass_TSM_pt_Ei_CPU_JAGS.rds")
   
 }
 ```
@@ -675,31 +681,30 @@ Look at the results and compare which model may be better:
 
 ```{r}
 
-phidot.pdot <- readRDS(file = "RData/CJS_pdot_Ei_IES_JAGS.rds")
-phidot.pt <- readRDS(file = "RData/CJS_pt_Ei_IES_JAGS.rds")
-phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Ei_IES_JAGS.rds")
-phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_IES_JAGS.rds")
-#phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds")
-phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_IES_JAGS.rds")
-phiMinCCL.pdot <- readRDS(file =  "RData/CJS_PhiMinCCL_pdot_Ei_IES_JAGS.rds")
-phiAgeClass.pt <- readRDS(file =  "RData/CJS_PhiAgeClass_pt_Ei_IES_JAGS.rds")
-phiAgeClass.TSM.pt <- readRDS(file =  "RData/CJS_PhiAgeClass_TSM_pt_Ei_IES_JAGS.rds")
+phidot.pdot <- readRDS(file = "RData/CJS_pdot_Ei_CPU_JAGS.rds")
+phidot.pt <- readRDS(file = "RData/CJS_pt_Ei_CPU_JAGS.rds")
+phidot.pTrap <- readRDS(file = "RData/CJS_pTrapresponse_Ei_CPU_JAGS.rds")
+phiTSM.pt <- readRDS(file = "RData/CJS_PhiTSM_pt_Ei_CPU_JAGS.rds")
+#phiTSM.pEff <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_CPU_JAGS.rds")
+phiTSM.pTSM <- readRDS(file = "RData/CJS_PhiTSM_pTSM_Ei_CPU_JAGS.rds")
+#phiMinCCL.pdot <- readRDS(file =  "RData/CJS_PhiMinCCL_pdot_Ei_CPU_JAGS.rds")
+phiAgeClass.pt <- readRDS(file =  "RData/CJS_PhiAgeClass_pt_Ei_CPU_JAGS.rds")
+phiAgeClass.TSM.pt <- readRDS(file =  "RData/CJS_PhiAgeClass_TSM_pt_Ei_CPU_JAGS.rds")
 
-phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_IES_JAGS.rds")
+phiCCL.pt <- readRDS(file = "RData/CJS_PhiCCL_pt_Ei_CPU_JAGS.rds")
 ```
 
 Look at DICs - although they are not great for model comparison...
 
 ```{r}
 DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTSM.pt",
-                             "phiTSM.pTSM", "phiMinCCL.pdot", "phiCCL.pt",
+                             "phiTSM.pTSM",  "phiCCL.pt",
                              "phiAgeClass.pt", "phiAgeClass.TSM.pt"),
                    DIC = c(phidot.pdot$jags.out$DIC, 
                            phidot.pt$jags.out$DIC, 
                            phidot.pTrap$jags.out$DIC,
                            phiTSM.pt$jags.out$DIC, 
                            phiTSM.pTSM$jags.out$DIC, 
-                           phiMinCCL.pdot$jags.out$DIC,
                            phiCCL.pt$jags.out$DIC,
                            phiAgeClass.pt$jags.out$DIC,
                            phiAgeClass.TSM.pt$jags.out$DIC))
@@ -707,57 +712,29 @@ DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTS
 arrange(DICs, DIC)
 ```
 
-According to DIC, phi(CCL) p(t) is the best, although phi(dot) p(t) is okay.  Let's take a look at the results from the first model.
+According to DIC, phi(tsm) p(t) is the best, although phi(AgeClass, TSM) p(t) and phi(.) p(.) are deltaDIC < 3. Let's take a look at the results from the first model.
 
 ```{r}
-phiCCL.pt$jags.out$summary %>% as.data.frame() %>% rownames_to_column(var = "Parameter") %>%
-  select(Parameter, mean, sd, "2.5%", "50%", "97.5%", Rhat) -> phiCCL.pt.df
+phiTSM.pt$jags.out$summary %>% as.data.frame() %>% rownames_to_column(var = "Parameter") %>%
+  select(Parameter, mean, sd, "2.5%", "50%", "97.5%", Rhat) -> phiTSM.pt.df
 
 #phiCCL.pt.df
-p.stats <- phiCCL.pt.df[grep("p[",
-                             phiCCL.pt.df$Parameter,
+p.stats <- phiTSM.pt.df[grep("p[",
+                             phiTSM.pt.df$Parameter,
                              fixed = TRUE),]
 p.stats
 ```
 
 
 Survival rate
-Survival rate is modeled as a linear function of CCL in the logit scale.  Extract the posterior samples for mu and beta and compute the CCL-survival relationship.
+There are two survival rates; one for the first capture and the other is for the rest (gamma[1] and gamma[2]). 
 ```{r}
-extract.samples <- function(varname, zm){
-  dev <- unlist((lapply(zm, FUN = function(x) x[, varname])))
-  return(dev)
-}
+phiTSM.pt.df %>% filter(Parameter == "gamma[1]" | Parameter == "gamma[2]")
+```
 
-inv.logit <- function(x) exp(x)/(1 + exp(x))
 
-mu.samples <- extract.samples("mu", phiCCL.pt$jags.out$samples)
-beta.samples <- extract.samples("beta", phiCCL.pt$jags.out$samples)
-
-mu.mean <- phiCCL.pt.df %>% filter(Parameter == "mu") %>% select(mean) %>% as.double()
-mu.low  <- phiCCL.pt.df %>% filter(Parameter == "mu") %>% select("2.5%") %>% as.double()
-mu.high  <- phiCCL.pt.df %>% filter(Parameter == "mu") %>% select("97.5%") %>% as.double()
-
-beta.mean <- phiCCL.pt.df %>% filter(Parameter == "beta") %>% select(mean)
-beta.low  <- phiCCL.pt.df %>% filter(Parameter == "beta") %>% select("2.5%") %>% as.double()
-beta.high  <- phiCCL.pt.df %>% filter(Parameter == "beta") %>% select("97.5%") %>% as.double()
-
-CCL <- seq(from = min(phiCCL.pt$jags.data$x, na.rm = T),
-           to = max(phiCCL.pt$jags.data$x, na.rm = T), 
-           by = 0.1)
-
-phi.mean <- inv.logit(mu.mean + beta.mean * CCL)
-phi.low <- inv.logit(mu.low + beta.low * CCL)
-phi.high <- inv.logit(mu.high + beta.high * CCL)
-
-CCL.phi.df <- data.frame(CCL = CCL,
-                         mean = phi.mean,
-                         low = phi.low,
-                         high = phi.high)
-
-ggplot(data = CCL.phi.df) +
-  geom_ribbon(aes(x = CCL, ymin = low, ymax = high)) +
-  geom_path(aes(x = CCL, y = mean))
+```{r}
+mcmc_dens(phiTSM.pt$jags.out$samples, pars = c("gamma[1]", "gamma[2]"))
 
 ```
 
@@ -765,8 +742,8 @@ ggplot(data = CCL.phi.df) +
 Using the H-T estimator, we also computed the abundance for each sampling occasion:
 
 ```{r}
-N.stats.df <- phiCCL.pt.df[grep("N[", 
-                             phiCCL.pt.df$Parameter,
+N.stats.df <- phiTSM.pt.df[grep("N[", 
+                             phiTSM.pt.df$Parameter,
                              fixed = TRUE),]
 
 N.stats.df$season <- colnames(CH.2)
@@ -777,10 +754,10 @@ N.stats.df
 
 ```{r}
 p1 <- ggplot(data = N.stats.df) +
-  geom_point(aes(x = season, y = X50.)) + 
-  geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
+  geom_point(aes(x = season, y = `50%`)) + 
+  geom_errorbar(aes(x = season, ymin = `2.5%`, ymax = `97.5%`)) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) + 
-  labs(title = "IES") +
+  labs(title = "CPU") +
   ylab("Abundance") + xlab("")
 
 
@@ -789,7 +766,7 @@ p1
 
 ```{r}
 
-ggsave(filename = "figures/IES_Nhats.png",
+ggsave(filename = "figures/CPU_Nhats.png",
        plot = p1, device = "png", dpi = 600)
 
 ```

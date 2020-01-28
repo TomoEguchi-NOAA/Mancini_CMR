@@ -777,8 +777,8 @@ N.stats.df
 
 ```{r}
 p1 <- ggplot(data = N.stats.df) +
-  geom_point(aes(x = season, y = X50.)) + 
-  geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
+  geom_point(aes(x = season, y = `50%`)) + 
+  geom_errorbar(aes(x = season, ymin = `2.5%`, ymax = `97.5%`)) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) + 
   labs(title = "IES") +
   ylab("Abundance") + xlab("")

@@ -25,7 +25,7 @@ do_analysis <- function(dp, ddl)
   # create formulas for Phi
   # tsm is time-since-marking; check for transient effects
   Phi.dot <-  list(formula = ~ 1)  
-  #Phi.CCL <- list(formula= ~ min_CCL)   # only 3 missing data for Ei so let's include this
+  Phi.CCL <- list(formula= ~ min_CCL)   # only 3 missing data for Ei so let's include this
   #Phi.t <- list(formula = ~ time)             # we never have this model worked for turtles... 
   #Phi.season <- list(formula = ~ sum_win)      # this also is unlikely... 
   #Phi.transience <- list(formula = ~ Transient)
@@ -35,7 +35,7 @@ do_analysis <- function(dp, ddl)
   p.dot <- list(formula = ~ 1)
   p.t <- list(formula = ~ time)
   p.tsm <- list(formula = ~ tsm)
-  #p.transience <- list(formula = ~ Transient)
+  p.transience <- list(formula = ~ Transient)
   #p.tsm.transience <- list(formula = ~ tsm + Transient)
   #p.t.transience <- list(formula = ~ time + Transient)
   p.effort <- list(formula = ~ effort)
@@ -68,9 +68,9 @@ CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
 
 # using R2ucare::group_data to combine CHs - with individual covariates,
 # this is not useful
-#CH.2 <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
+CH.Ucare <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
 
-# Use CCL as a covariate as only three were missed (these may be recaptures also).
+# Use CCL as a covariate 
 dat.1.Ei %>% select(ID, CCL) %>% group_by(ID) %>%
   summarise(min_CCL = min(CCL, na.rm = T)) %>%
   filter(!is.infinite(min_CCL))  -> data.CCL
@@ -85,9 +85,9 @@ data.CCL  %>% left_join(CH.1, by = "ID") %>%
 # here I define transients to be those that were caught just once
 # but that eliminates the possibility of dying after the first
 # capture - how do I deal with this?
-# n.cap <- rowSums(CJS.data$data)
-# transient.vec <- rep(1, times = length(n.cap))
-# transient.vec[n.cap > 1] <- 2
+n.cap <- rowSums(CJS.data$data)
+transient.vec <- rep(1, times = length(n.cap))
+transient.vec[n.cap > 1] <- 2
 
 # need to count how many capture events occured per season
 dat.1.Ei %>% select(season, "DATE") %>% 
@@ -103,7 +103,8 @@ CH <- unite(data.frame(tmp),
            col = "ch",
            sep = "")
 
-CH$freq <- CH.2$effY
+# with individual covariates, frequency is 1.  
+#CH$freq <- CH.2$effY
 
 # tmp <- apply(as.matrix(CJS.data$data), 
 #              MARGIN = 2, 
@@ -114,50 +115,57 @@ CH$freq <- CH.2$effY
 #             sep = "")
 
 #CH$min_weight <- cov.weight
-#CH$Transient <- transient.vec
+CH$min_CCL <- cov.CCL
+CH$Transient <- transient.vec
 
 
 # capture dates and difference in years
-cap.dates <- paste0(colnames(CJS.data$data), "-01")
-delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
-                                   as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
+cap.dates <- as.Date(paste0(colnames(CJS.data$data), "-01"))
+# delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
+#                                    as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
+
+delta.dates <- signif(as.numeric(cap.dates[2:length(cap.dates)] - 
+                                   cap.dates[1:(length(cap.dates)-1)])/365, 1)
 
 # a possibility of survival changing between summer/winter?
 tmp <- strsplit(colnames(CJS.data$data), split = "-")
 tmp2 <- lapply(tmp, FUN = function(x) x[2])
 tmp3 <- unlist(tmp2)
 
-# dp <- process.data(CH, 
-#                    model = "CJS", 
+# dp <- process.data(CH,
+#                    model = "CJS",
 #                    time.intervals = delta.dates,
 #                    groups = "Transient",
-#                    begin.time = 2001)
+#                    begin.time = min(year(cap.dates)))
 
-dp <- process.data(CH, 
-                   model = "CJS", 
+
+# EFFORT AND TRANSIENT ARE NOT IN THE DATA.... FIX IT HERE 1/30/2020
+dp <- process.data(CH,
+                   model = "CJS",
                    time.intervals = delta.dates,
-                   begin.time = 2001)
+                   begin.time = min(year(cap.dates)))
 
 ddl <- make.design.data(dp)
 
-# p is indexed from 2001.4
-# Phi is indexed from 2001
+# p is indexed from 2010.6
+# Phi is indexed from 2010
 
 # effort affects the capture probability (p)
 effort.season <- effort.season[1:length(levels(ddl$p$time)),]
-effort.season$time <- as.factor(2001 + cumsum(delta.dates))
+effort.season$time <- as.factor(min(year(cap.dates)) + cumsum(delta.dates))
 
 ddl$p <- merge_design.covariates(ddl$p, df = effort.season)
 
 # summer/winter affects capture probability (maybe)
 sum_win <- data.frame(sum_win = unlist(ifelse(tmp3 == "08", "summer", "winter")) [1:length(levels(ddl$p$time))],
-                      time = as.factor(2001 + cumsum(delta.dates)))
+                      time = as.factor(min(year(cap.dates)) + cumsum(delta.dates)))
 
 ddl$p <- merge_design.covariates(ddl$p, df = sum_win)
 
 # summer/winter affects survival (maybe)
 sum_win <- data.frame(sum_win = unlist(ifelse(tmp3 == "08", "summer", "winter")) [1:length(levels(ddl$p$time))],
-                      time = as.factor(2001 + cumsum(c(0, delta.dates[1:(length(delta.dates)-1)]))))
+                      time = as.factor(min(year(cap.dates)) + 
+                                         cumsum(c(0, delta.dates[1:(length(delta.dates)-1)]))))
 
 ddl$Phi <- merge_design.covariates(ddl$Phi, df = sum_win)
 
@@ -180,25 +188,24 @@ Compare results using AICc:
 model.table(ei.results)
 ```
 
-According to AICc, the best ones are Phi(dot)p(time and) Phi(tsm)p(time). But c-hat > 7.5!  Obviously, this isn't a great model... What to do? 
+According to AICc, the best one is Phi(tsm)p(Transient). But c-hat > 11!  But Fletcher's chat is ~1.0.  Obviously, this isn't a great model... What to do? 
 
 Look at the estimates:
 ```{r}
-ei.results$Phi.tsm.p.t$results$real
+ei.results$Phi.tsm.p.transience$results$real
 ```
 
 Export to Mark to see Release GOF.
 ```{r}
 export.MARK(dp, 
-            project.name = "Mancini_Ei", 
-            model = ei.results$Phi.tsm.p.t, 
+            project.name = "Mancini_Ei_IES", 
+            model = ei.results$Phi.tsm.p.transience, 
             replace = T, 
-            chat = 7.5)
+            chat = 11)
 ```
 
+THIS NEEDS TO BE DONE - JAN 31, 2020!!
 Median c-hat test returned semi-acceptable results of estimated c-hat = 1.xxx, with 95%CI = ().  
-
-
 
 
 Release output is similar to what I find below from R2ucare.
@@ -209,29 +216,36 @@ R2ucare to do GOF.  There is no GOF for individual covariate models so we need t
 ```{r}
 
 #CH.ucare <- select(CH, -c("min_weight", "Transient"))
-
 # test away! 
-test3sr_Ei <- test3sr(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
-test3sm_Ei <- test3sm(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
+test3sr_Ei <- test3sr(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY) #[, 1:(ncol(CH.2)-1)]), CH.2$effY)
+test3sm_Ei <- test3sm(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
 
-test2ct_Ei <- test2ct(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
-test2cl_Ei <- test2cl(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
+test2ct_Ei <- test2ct(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
+test2cl_Ei <- test2cl(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
 
 # look at the overall results
-test_all_Ei <- overall_CJS(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), CH.2$effY)
+test_all_Ei <- overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
 
 # using Justin's equations from Howick's data:
-# stat_new <- overall_CJS(as.matrix(CJS.data$data), 
-#                         rep(1, nrow(CJS.data$data)))$chi2 - 
-#   (test3sr(as.matrix(CJS.data$data), 
-#            rep(1, nrow(CJS.data$data)))$test3sr[[1]])
-# df_new <- overall_CJS(as.matrix(CJS.data$data), 
-#                       rep(1, nrow(CJS.data$data)))$degree_of_freedom - 
-#   (test3sr(as.matrix(CJS.data$data), rep(1, nrow(CJS.data$data)))$test3sr[[2]])
-# 
-# 1-pchisq(stat_new, df_new)
+stat_new <- overall_CJS(as.matrix(CJS.data$data),
+                        rep(1, nrow(CJS.data$data)))$chi2 -
+  (test3sr(as.matrix(CJS.data$data),
+           rep(1, nrow(CJS.data$data)))$test3sr[[1]])
+df_new <- overall_CJS(as.matrix(CJS.data$data),
+                      rep(1, nrow(CJS.data$data)))$degree_of_freedom -
+  (test3sr(as.matrix(CJS.data$data), rep(1, nrow(CJS.data$data)))$test3sr[[2]])
+
+1-pchisq(stat_new, df_new)
 
 ```
+
+So... this is supposed to be okay?  Need to look into more on this stuff... 
+
 
 Look at one at a time:
 ```{r}

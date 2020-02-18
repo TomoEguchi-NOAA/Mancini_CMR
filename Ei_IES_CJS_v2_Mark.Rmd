@@ -18,6 +18,8 @@ library(ggridges)
 library(RMark)
 library(R2ucare)
 
+# clean up the Mark output files before running the new ones.
+cleanup(ask = F)
 source("Mancini_functions.R")
 
 do_analysis <- function(dp, ddl)
@@ -204,12 +206,7 @@ export.MARK(dp,
             chat = 11)
 ```
 
-THIS NEEDS TO BE DONE - JAN 31, 2020!!
-Median c-hat test returned semi-acceptable results of estimated c-hat = 1.xxx, with 95%CI = ().  
-
-
-Release output is similar to what I find below from R2ucare.
-
+Because of the individual covariate, median c-hat analysis can't be run. 
 
 R2ucare to do GOF.  There is no GOF for individual covariate models so we need to remove them before checking GOF (from user guide for R2ucare).
 
@@ -265,64 +262,7 @@ filter(test3sm.details, p_val < 0.05)
 
 All zeros!!  What's going on here?
 
-To make a comparison, I look at an occasion that passed the test:
 
-```{r}
-# first filter rows with 1s on the 25th column
-data.25 <- filter(CJS.data$data, CJS.data$data[, 25] > 0) #%>%
-# then look at recaptures since the 25th occasion
-data.25 <- data.25[, 25:ncol(data.25)]
-
-# look at the recaptures, given they were caught on the 25th occasion. 
-data.25.3sm <- data.25[, c(2:ncol(data.25))]
-rowSums(data.25.3sm)
-```
-
-Then look at what happened in those occasions (4, 7, 36). 
-
-```{r}
-# first filter rows with 1s on the 4th column
-data.4 <- filter(CJS.data$data, CJS.data$data[, 4] > 0) #%>%
-# then look at recaptures since the 4th occasion
-data.4 <- data.4[, 4:ncol(data.4)]
-
-# look at the recaptures, given they were caught on the 4th occasion. 
-data.4.3sm <- data.4[, c(2:ncol(data.4))]
-rowSums(data.4.3sm)
-
-```
-
-I see that there are some recaptures that are unusually high - a 5 and 3.  This is probably why this occasion was flagged. 
-
-```{r}
-# first filter rows with 1s on the 7th column
-data.7 <- filter(CJS.data$data, CJS.data$data[, 7] > 0) #%>%
-# then look at recaptures since the 7th occasion
-data.7 <- data.7[, 7:ncol(data.7)]
-
-# look at the recaptures, given they were caught on the 7th occasion. 
-data.7.3sm <- data.7[, c(2:ncol(data.7))]
-rowSums(data.7.3sm)
-
-```
-
-Seems awfuly a small number of captures at the 7th occasion. Of these, only 3 were recaptured more than once after it was released on the 7th occasion. It still doesn't make much sense... 
-
-```{r}
-# 
-data.10 <- filter(CJS.data$data, CJS.data$data[, 10] > 0) #%>%
-#  select(-"ID") 
-
-# then look at recaptures since the 7th occasion
-data.10 <- data.10[, 10:ncol(data.10)]
-
-# this is the second to last occasion.  
-data.10.3sm <- data.10[, c(2:ncol(data.10))]
-rowSums(data.10.3sm)
-
-```
-
-So, what do we do with these results...?
 
 
 Moving on to TEST2... TEST2.CT tests the hypothesis that "there is no difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions.  
@@ -341,14 +281,13 @@ test2cl_Ei.details <- test2cl_Ei$details
 filter(test2cl_Ei.details, p_val < 0.05)
 ```
 
-There were six occasions that were flagged (alpha = 0.05), which were all positive.  Occasions 16 and 22 failed the 2ct and 2cl tests. With alpha = 0.01, two are "significant": occasions 14 and 34. 
 
 
 ```{r}
 test_all_Ei
 ```
 
-These tests failed at some occasions. Does this mean the entire model is not suited to the data, or there are some occasions that failed the test but the CJS model isn't a complete failure because given the null-hypothesis approach, some tests are bound to fail when there are many occasions?  I see a good sign that many occasions passed these tests... The main concern right now is the estimated c-hat value of > 9.  
+These tests failed at some occasions. Does this mean the entire model is not suited to the data, or there are some occasions that failed the test but the CJS model isn't a complete failure because given the null-hypothesis approach, some tests are bound to fail when there are many occasions?  I see a good sign that many occasions passed these tests... The main concern right now is the estimated c-hat value of > 11.  
 
 How do we deal with that? 
 

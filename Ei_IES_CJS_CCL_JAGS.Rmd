@@ -756,7 +756,8 @@ CCL.phi.df <- data.frame(CCL = CCL,
                          high = phi.high)
 
 ggplot(data = CCL.phi.df) +
-  geom_ribbon(aes(x = CCL, ymin = low, ymax = high)) +
+  geom_ribbon(aes(x = CCL, ymin = low, ymax = high),
+              alpha = 0.5) +
   geom_path(aes(x = CCL, y = mean))
 
 ```

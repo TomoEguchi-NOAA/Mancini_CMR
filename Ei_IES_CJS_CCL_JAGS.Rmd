@@ -710,7 +710,9 @@ arrange(DICs, DIC)
 According to DIC, phi(CCL) p(t) is the best, although phi(dot) p(t) is okay.  Let's take a look at the results from the first model.
 
 ```{r}
-phiCCL.pt$jags.out$summary %>% as.data.frame() %>% rownames_to_column(var = "Parameter") %>%
+phiCCL.pt$jags.out$summary %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Parameter") %>%
   select(Parameter, mean, sd, "2.5%", "50%", "97.5%", Rhat) -> phiCCL.pt.df
 
 #phiCCL.pt.df

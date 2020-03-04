@@ -793,7 +793,8 @@ p1
 ```{r}
 
 ggsave(filename = "figures/IES_Nhats.png",
-       plot = p1, device = "png", dpi = 600)
+       plot = p1, device = "png", dpi = 600,
+       width = 6.29, height = 3.68, units = "in" )
 
 ```
 

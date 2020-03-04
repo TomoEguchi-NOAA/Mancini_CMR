@@ -339,37 +339,37 @@ How about time-varying CCL individual covariate? It's possible to use the von Be
 
 ```{r}
 
-if (!file.exists(paste0("RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds"))){
-  MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
-  dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
-  data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
-    select(-c(ID, min_CCL)) -> dat.2.CCL
-
-  CCL.mat <- as.matrix(dat.2.CCL)
-  
-  jags.data$x <- CCL.mat
-
-  ## parameters to monitor - when this is changed, make sure to change
-  ## summary statistics indices at the end of this script.
-  parameters <- c("p", "mu", "beta", "sigma", "N", "deviance")
-
-  jm.PhiCCL.pt <- jags(data = jags.data,
-                         #inits = inits,
-                         parameters.to.save= parameters,
-                         model.file = MCMC.params$model.file,
-                         n.chains = MCMC.params$n.chains,
-                         n.burnin = MCMC.params$n.burnin,
-                         n.thin = MCMC.params$n.thin,
-                         n.iter = MCMC.params$n.samples,
-                         DIC = T,
-                         parallel=T)
-
-  out.list <- list(jags.out = jm.PhiCCL.pt,
-                   jags.data = jags.data)
-
-  saveRDS(out.list,
-          file = paste0("RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds"))
-}
+# if (!file.exists(paste0("RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds"))){
+#   MCMC.params$model.file <- "models/Model_CJS_PhiCCL_pt.txt"
+#   dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
+#   data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+#     select(-c(ID, min_CCL)) -> dat.2.CCL
+# 
+#   CCL.mat <- as.matrix(dat.2.CCL)
+#   
+#   jags.data$x <- CCL.mat
+# 
+#   ## parameters to monitor - when this is changed, make sure to change
+#   ## summary statistics indices at the end of this script.
+#   parameters <- c("p", "mu", "beta", "sigma", "N", "deviance")
+# 
+#   jm.PhiCCL.pt <- jags(data = jags.data,
+#                          #inits = inits,
+#                          parameters.to.save= parameters,
+#                          model.file = MCMC.params$model.file,
+#                          n.chains = MCMC.params$n.chains,
+#                          n.burnin = MCMC.params$n.burnin,
+#                          n.thin = MCMC.params$n.thin,
+#                          n.iter = MCMC.params$n.samples,
+#                          DIC = T,
+#                          parallel=T)
+# 
+#   out.list <- list(jags.out = jm.PhiCCL.pt,
+#                    jags.data = jags.data)
+# 
+#   saveRDS(out.list,
+#           file = paste0("RData/CJS_PhiCCL_pt_CCL_Cm_JAGS.rds"))
+# }
 
 ```
 
@@ -380,7 +380,11 @@ Age class for survival rate:
 
 if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_CCL_Cm_JAGS.rds"))){
   MCMC.params$model.file <- "models/Model_CJS_PhiAgeClass_pt.txt"
-  
+  dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
+  data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+    select(-c(ID, min_CCL)) -> dat.2.CCL
+
+  CCL.mat <- as.matrix(dat.2.CCL)
   ageclass.mat <- matrix(1, nrow = nrow(CH.2), ncol = ncol(CH.2))
   ageclass.mat[which(CCL.mat >= 90.0)] <- 2
   k <- 1
@@ -497,6 +501,8 @@ arrange(DICs, DIC)
 
 According to DIC, phi(AgeClass) p(t) is the best.  Let's take a look at the results.
 
+Survival rates of residents were about 0.6/yr.  Kinda low... 
+
 gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] has a lot wider posterior. Median is lower for big ones also... 
 
 ```{r}
@@ -518,8 +524,6 @@ p.stats
 ```
 
 
-Survival rates of residents were about 0.6/yr.  Kinda low... 
-
 Using the H-T estimator, we also computed the abundance for each sampling occasion:
 
 ```{r}
@@ -536,11 +540,19 @@ N.stats.df
 
 
 ```{r}
-ggplot(data = N.stats.df) +
+p1 <- ggplot(data = N.stats.df) +
   geom_point(aes(x = season, y = X50.)) + 
   geom_errorbar(aes(x = season, ymin = X2.5., ymax = X97.5.)) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5)) + 
   ylab("Abundance") + xlab("")
+
+print(p1)
+```
+
+```{r}
+ggsave(filename = "figures/Cm_Nhats.png",
+       plot = p1, device = "png", dpi = 600,
+       width = 6.29, height = 3.68, units = "in" )
 
 ```
 

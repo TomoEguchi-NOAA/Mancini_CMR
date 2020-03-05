@@ -494,20 +494,37 @@ DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTS
                            phiTSM.pTSM$jags.out$DIC, 
                            phiMinCCL.pdot$jags.out$DIC,
                            phiAgeClass.pt$jags.out$DIC,
-                           phiAgeClass.TSM.pt$jags.out$DIC))
+                           phiAgeClass.TSM.pt$jags.out$DIC),
+                   dDIC = c(phidot.pdot$jags.out$DIC, 
+                           phidot.pt$jags.out$DIC, 
+                           phidot.pTrap$jags.out$DIC,
+                           phiTSM.pt$jags.out$DIC, 
+                           phiTSM.pEff$jags.out$DIC, 
+                           phiTSM.pTSM$jags.out$DIC, 
+                           phiMinCCL.pdot$jags.out$DIC,
+                           phiAgeClass.pt$jags.out$DIC,
+                           phiAgeClass.TSM.pt$jags.out$DIC) - min(c(phidot.pdot$jags.out$DIC, 
+                           phidot.pt$jags.out$DIC, 
+                           phidot.pTrap$jags.out$DIC,
+                           phiTSM.pt$jags.out$DIC, 
+                           phiTSM.pEff$jags.out$DIC, 
+                           phiTSM.pTSM$jags.out$DIC, 
+                           phiMinCCL.pdot$jags.out$DIC,
+                           phiAgeClass.pt$jags.out$DIC,
+                           phiAgeClass.TSM.pt$jags.out$DIC)))
 
 arrange(DICs, DIC)
 ```
 
 According to DIC, phi(AgeClass) p(t) is the best.  Let's take a look at the results.
 
-Survival rates of residents were about 0.6/yr.  Kinda low... 
-
-gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] has a lot wider posterior. Median is lower for big ones also... 
+Survival rates (gammas): gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] has a lot wider posterior. Median is lower for big ones also... 
 
 ```{r}
 mcmc_dens(phiAgeClass.pt$jags.out$samples, c("gamma[1]", "gamma[2]"))
 ```
+
+Survival rates of smaller turtles was greater than those of larger ones. This may explain the recent decline? 
 
 ```{r}
 gamma.stats <- phiAgeClass.pt$jags.out$summary[grep("gamma", 

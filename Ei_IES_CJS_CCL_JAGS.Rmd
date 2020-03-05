@@ -702,12 +702,29 @@ DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTS
                            phiMinCCL.pdot$jags.out$DIC,
                            phiCCL.pt$jags.out$DIC,
                            phiAgeClass.pt$jags.out$DIC,
-                           phiAgeClass.TSM.pt$jags.out$DIC))
+                           phiAgeClass.TSM.pt$jags.out$DIC),
+                   dDIC = c(phidot.pdot$jags.out$DIC, 
+                           phidot.pt$jags.out$DIC, 
+                           phidot.pTrap$jags.out$DIC,
+                           phiTSM.pt$jags.out$DIC, 
+                           phiTSM.pTSM$jags.out$DIC, 
+                           phiMinCCL.pdot$jags.out$DIC,
+                           phiCCL.pt$jags.out$DIC,
+                           phiAgeClass.pt$jags.out$DIC,
+                           phiAgeClass.TSM.pt$jags.out$DIC) - min(c(phidot.pdot$jags.out$DIC, 
+                           phidot.pt$jags.out$DIC, 
+                           phidot.pTrap$jags.out$DIC,
+                           phiTSM.pt$jags.out$DIC, 
+                           phiTSM.pTSM$jags.out$DIC, 
+                           phiMinCCL.pdot$jags.out$DIC,
+                           phiCCL.pt$jags.out$DIC,
+                           phiAgeClass.pt$jags.out$DIC,
+                           phiAgeClass.TSM.pt$jags.out$DIC)))
 
 arrange(DICs, DIC)
 ```
 
-According to DIC, phi(CCL) p(t) is the best, although phi(dot) p(t) is okay.  Let's take a look at the results from the first model.
+According to DIC, phi(CCL) p(t) is the best.  Let's take a look at the results from the first model.
 
 ```{r}
 phiCCL.pt$jags.out$summary %>% 
@@ -725,6 +742,31 @@ p.stats
 
 Survival rate
 Survival rate is modeled as a linear function of CCL in the logit scale.  Extract the posterior samples for mu and beta and compute the CCL-survival relationship.
+
+Look at if the two parameters converged okay.
+```{r}
+phiCCL.pt.df[grep("mu", phiCCL.pt.df$Parameter, fixed = TRUE),]
+```
+
+```{r}
+phiCCL.pt.df[grep("beta", phiCCL.pt.df$Parameter, fixed = TRUE),]
+```
+
+```{r}
+mcmc_trace(phiCCL.pt$jags.out$samples, pars = c("mu", "beta"))
+```
+
+Not great but okay... 
+
+
+Take a look at the posteiors on mu and beta
+```{r}
+mcmc_dens(phiCCL.pt$jags.out$samples, pars = c("mu", "beta"))
+
+
+```
+
+
 ```{r}
 extract.samples <- function(varname, zm){
   dev <- unlist((lapply(zm, FUN = function(x) x[, varname])))
@@ -736,26 +778,20 @@ inv.logit <- function(x) exp(x)/(1 + exp(x))
 mu.samples <- extract.samples("mu", phiCCL.pt$jags.out$samples)
 beta.samples <- extract.samples("beta", phiCCL.pt$jags.out$samples)
 
-mu.mean <- phiCCL.pt.df %>% filter(Parameter == "mu") %>% select(mean) %>% as.double()
-mu.low  <- phiCCL.pt.df %>% filter(Parameter == "mu") %>% select("2.5%") %>% as.double()
-mu.high  <- phiCCL.pt.df %>% filter(Parameter == "mu") %>% select("97.5%") %>% as.double()
-
-beta.mean <- phiCCL.pt.df %>% filter(Parameter == "beta") %>% select(mean)
-beta.low  <- phiCCL.pt.df %>% filter(Parameter == "beta") %>% select("2.5%") %>% as.double()
-beta.high  <- phiCCL.pt.df %>% filter(Parameter == "beta") %>% select("97.5%") %>% as.double()
-
 CCL <- seq(from = min(phiCCL.pt$jags.data$x, na.rm = T),
            to = max(phiCCL.pt$jags.data$x, na.rm = T), 
            by = 0.1)
 
-phi.mean <- inv.logit(mu.mean + beta.mean * CCL)
-phi.low <- inv.logit(mu.low + beta.low * CCL)
-phi.high <- inv.logit(mu.high + beta.high * CCL)
+phi.logit <- matrix(ncol = length(CCL), nrow = length(beta.samples))
+for (k in 1:length(beta.samples))
+  phi.logit[k,] <- mu.samples[k] + beta.samples[k] * CCL 
+
+phi <- inv.logit(phi.logit)
 
 CCL.phi.df <- data.frame(CCL = CCL,
-                         mean = phi.mean,
-                         low = phi.low,
-                         high = phi.high)
+                         mean = apply(phi, MARGIN = 2, FUN = mean),
+                         low = apply(phi, MARGIN = 2, FUN = quantile, 0.05),
+                         high = apply(phi, MARGIN = 2, FUN = quantile, 0.95))
 
 ggplot(data = CCL.phi.df) +
   geom_ribbon(aes(x = CCL, ymin = low, ymax = high),
@@ -764,17 +800,69 @@ ggplot(data = CCL.phi.df) +
 
 ```
 
+This doesn't look healthy... Look at the sigma posterior (error term for the individual logit survival rate).
+
+```{r}
+mcmc_trace(phiCCL.pt$jags.out$samples, pars = c("sigma"))
+```
+
+Yeah... not so good.  
+
+```{r}
+phiCCL.pt.df[grep("sigma", 
+                  phiCCL.pt.df$Parameter,
+                  fixed = TRUE),]
+```
+
+Rhat statistic says it converged but I don't like it so much...
+
+```{r}
+mcmc_dens(phiCCL.pt$jags.out$samples, pars = c("sigma"))
+```
+
+So... I'm going to use phi(.) p(t) as the best model:
+
+```{r}
+phidot.pt$jags.out$summary %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Parameter") %>%
+  select(Parameter, mean, sd, "2.5%", "50%", "97.5%", Rhat) -> phidot.pt.df
+
+p.stats <- phidot.pt.df[grep("p[",
+                             phiCCL.pt.df$Parameter,
+                             fixed = TRUE),]
+p.stats %>% select(-Rhat)
+```
+
+Survival rate
+Survival rate is constant.  
+
+Look at if the two parameters converged okay.
+```{r}
+phidot.pt.df[grep("phi", phidot.pt.df$Parameter, fixed = TRUE),]
+```
+
+```{r}
+mcmc_trace(phidot.pt$jags.out$samples, pars = c("mean.phi"))
+```
+
+
+```{r}
+mcmc_dens(phidot.pt$jags.out$samples, pars = c("mean.phi"))
+```
+
+This looks a lot better. 
 
 Using the H-T estimator, we also computed the abundance for each sampling occasion:
 
 ```{r}
-N.stats.df <- phiCCL.pt.df[grep("N[", 
-                             phiCCL.pt.df$Parameter,
+N.stats.df <- phidot.pt.df[grep("N[", 
+                             phidot.pt.df$Parameter,
                              fixed = TRUE),]
 
 N.stats.df$season <- colnames(CH.2)
 
-N.stats.df
+N.stats.df %>% select(-Rhat)
 ```
 
 

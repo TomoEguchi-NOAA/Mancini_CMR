@@ -707,12 +707,27 @@ DICs <- data.frame(model = c("phidot.pdot",  "phidot.pt", "phidot.pTrap", "phiTS
                            phiTSM.pTSM$jags.out$DIC, 
                            phiCCL.pt$jags.out$DIC,
                            phiAgeClass.pt$jags.out$DIC,
-                           phiAgeClass.TSM.pt$jags.out$DIC))
+                           phiAgeClass.TSM.pt$jags.out$DIC),
+                   dDIC = c(phidot.pdot$jags.out$DIC, 
+                           phidot.pt$jags.out$DIC, 
+                           phidot.pTrap$jags.out$DIC,
+                           phiTSM.pt$jags.out$DIC, 
+                           phiTSM.pTSM$jags.out$DIC, 
+                           phiCCL.pt$jags.out$DIC,
+                           phiAgeClass.pt$jags.out$DIC,
+                           phiAgeClass.TSM.pt$jags.out$DIC) - min(c(phidot.pdot$jags.out$DIC, 
+                           phidot.pt$jags.out$DIC, 
+                           phidot.pTrap$jags.out$DIC,
+                           phiTSM.pt$jags.out$DIC, 
+                           phiTSM.pTSM$jags.out$DIC, 
+                           phiCCL.pt$jags.out$DIC,
+                           phiAgeClass.pt$jags.out$DIC,
+                           phiAgeClass.TSM.pt$jags.out$DIC)))
 
 arrange(DICs, DIC)
 ```
 
-According to DIC, phi(tsm) p(t) is the best, although phi(AgeClass, TSM) p(t) and phi(.) p(.) are deltaDIC < 3. Let's take a look at the results from the first model.
+According to DIC, phi(TSM) p(t) is the best, although phi(AgeClass, TSM) p(t), phi(.) p(.), phi(AgeClass) p(t) are deltaDIC < 3. Let's take a look at the results from the first model.
 
 ```{r}
 phiTSM.pt$jags.out$summary %>% as.data.frame() %>% rownames_to_column(var = "Parameter") %>%
@@ -722,7 +737,7 @@ phiTSM.pt$jags.out$summary %>% as.data.frame() %>% rownames_to_column(var = "Par
 p.stats <- phiTSM.pt.df[grep("p[",
                              phiTSM.pt.df$Parameter,
                              fixed = TRUE),]
-p.stats
+p.stats %>% select(-Rhat)
 ```
 
 
@@ -748,7 +763,7 @@ N.stats.df <- phiTSM.pt.df[grep("N[",
 
 N.stats.df$season <- colnames(CH.2)
 
-N.stats.df
+N.stats.df %>% select(-Rhat)
 ```
 
 

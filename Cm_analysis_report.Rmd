@@ -100,14 +100,24 @@ dat.1.Cm %>% group_by(ID) %>%
             firstCCL = first(CCL)) %>%
   na.omit() -> firstcap_only
 
-ggplot(data=firstcap_only, 
+p1 <- ggplot(data=firstcap_only, 
        aes(x = firstCCL, 
            y = as.factor(firstGroup)), na.rm =T)+
   geom_density_ridges2(fill="forestgreen",
                        jittered_points = T,
                        position = position_points_jitter(height = 0),
                        alpha = 0.5)+
-  labs(main="Change in size distribution", x="CCL (cm)", y="")
+  coord_flip() +
+  theme(axis.text.x = element_text(angle = 45,
+                                   vjust = 0.5)) + 
+  labs(title="Change in size distribution", 
+       x="CCL (cm)", y="")
+
+ggsave(filename = "figures/Cm_ChangeInSize.png", plot = p1,
+       device = "png", dpi = 600, 
+       width = 6.29, height = 3.68, units = "in")
+
+p1
 ```
 
 
@@ -157,6 +167,8 @@ ggplot(data = dat.1.Cm.CCL) +
   ylab("CCL (cm)")
 
 ```
+
+
 
 ## von Bertalanffy growth function
 

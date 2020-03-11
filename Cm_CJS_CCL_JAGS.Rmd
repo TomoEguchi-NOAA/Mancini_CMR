@@ -16,8 +16,9 @@ library(reshape)
 library(bayesplot)
 library(ggridges)
 
-
 source("Mancini_functions.R")
+
+save.fig <- F
 
 MCMC.params <- list(n.samples = 50000,
                     n.burnin = 30000,
@@ -567,6 +568,7 @@ print(p1)
 ```
 
 ```{r}
+if (save.fig)
 ggsave(filename = "figures/Cm_Nhats.png",
        plot = p1, device = "png", dpi = 600,
        width = 6.29, height = 3.68, units = "in" )

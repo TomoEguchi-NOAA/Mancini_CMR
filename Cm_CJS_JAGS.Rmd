@@ -16,7 +16,6 @@ library(reshape)
 library(bayesplot)
 library(ggridges)
 
-
 source("Mancini_functions.R")
 
 MCMC.params <- list(n.samples = 50000,

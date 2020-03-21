@@ -329,8 +329,12 @@ dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 dat.1 %>% filter(species == "Cm") -> dat.1.Cm
 
 # Use CCL as a covariate as only three were missed (these may be recaptures also).
-dat.1.Cm %>% select(ID, CCL) %>% group_by(ID) %>%
-  summarise(min_CCL = min(CCL, na.rm = T)) %>%
+# there are 345 missing CCLs
+dat.1.Cm %>% 
+  select(ID, CCL) %>% 
+  na.omit() %>%
+  group_by(ID) %>%
+  summarise(min_CCL = min(CCL, na.rm = T)) %>% #-> tmp
   filter(!is.infinite(min_CCL)) -> data.CCL
 
 CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
@@ -517,7 +521,7 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds"))){
   CCL.mat[which(CCL.mat < 90.0)] <- 1
 
   first.cap <- jags.data$f
-  m <- matrix(data = 2, nrow = nrow(CH), ncol = ncol(CH))
+  m <- matrix(data = 2, nrow = nrow(CH.2), ncol = ncol(CH.2))
   X <- matrix(data = 1, nrow = nrow(CCL.mat), ncol = ncol(CCL.mat))
 
   for (k in 1:nrow(m)){

@@ -16,6 +16,7 @@ library(reshape)
 library(bayesplot)
 library(ggridges)
 library(RMark)
+library(loo)
 
 source("Mancini_functions.R")
 
@@ -44,7 +45,10 @@ n.caps.ID.CCLna <- c(nrow(dat.1.Cm[dat.1.Cm$ID %in% lapply(ID.CCLna[,1], as.char
                      nrow(dat.1.Cm[dat.1.Cm$ID %in% lapply(ID.CCLna[,1], as.character)$ID[2],]),
                      nrow(dat.1.Cm[dat.1.Cm$ID %in% lapply(ID.CCLna[,1], as.character)$ID[3],]))
 
-dat.1.Cm %>% select(ID, CCL) %>% group_by(ID) %>%
+# some have only NAs so we get warnings
+dat.1.Cm %>% select(ID, CCL) %>% 
+  na.omit() %>%
+  group_by(ID) %>%
   summarise(min_CCL = min(CCL, na.rm = T)) %>%
   filter(!is.infinite(min_CCL)) -> data.CCL
 
@@ -62,12 +66,32 @@ jm.RLinf_Fk.Cm <- readRDS("RData/Rlinf_Fk_Cm.rds")
 jm.FLinf_Rk.Cm <- readRDS("RData/Flinf_Rk_Cm.rds")
 jm.FLinf_Fk.Cm <- readRDS("RData/Flinf_Fk_Cm.rds")
 
-DICs <- data.frame(model = c("R_Linf_R_k", "R_Linf_F_k", 
-                             "F_Linf_R_k", "F_Linf_F_k"),
-                   DIC = c(jm.RLinf_Rk.Cm$DIC, jm.RLinf_Fk.Cm$DIC, 
-                           jm.FLinf_Rk.Cm$DIC, jm.FLinf_Fk.Cm$DIC))
 
-#arrange(DICs, DIC)
+LOOIC.RLinf_Rk.Cm <- readRDS("RData/LOO_Rlinf_Rk_Cm.rds")
+LOOIC.RLinf_Fk.Cm <- readRDS("RData/LOO_Rlinf_Fk_Cm.rds")
+LOOIC.FLinf_Rk.Cm <- readRDS("RData/LOO_Flinf_Rk_Cm.rds")
+LOOIC.FLinf_Fk.Cm <- readRDS("RData/LOO_Flinf_Fk_Cm.rds")
+
+LOOIC.DIC.Cm <- data.frame(model = c("RLinf_Rk", "RLinf_Fk", "FLinf_Rk", "FLinf_Fk"),
+                           LOOIC = c(LOOIC.RLinf_Rk.Cm$loo.out$estimates["looic", "Estimate"],
+                                     LOOIC.RLinf_Fk.Cm$loo.out$estimates["looic", "Estimate"],
+                                     LOOIC.FLinf_Rk.Cm$loo.out$estimates["looic", "Estimate"],
+                                     LOOIC.FLinf_Fk.Cm$loo.out$estimates["looic", "Estimate"]),
+                           SE = c(LOOIC.RLinf_Rk.Cm$loo.out$estimates["looic", "SE"],
+                                  LOOIC.RLinf_Fk.Cm$loo.out$estimates["looic", "SE"],
+                                  LOOIC.FLinf_Rk.Cm$loo.out$estimates["looic", "SE"],
+                                  LOOIC.FLinf_Fk.Cm$loo.out$estimates["looic", "SE"]),
+                           DIC = c(jm.RLinf_Rk.Cm$DIC, 
+                                   jm.RLinf_Fk.Cm$DIC, 
+                                   jm.FLinf_Rk.Cm$DIC, 
+                                   jm.FLinf_Fk.Cm$DIC),
+                           max.Rhat = c(max(jm.RLinf_Rk.Cm$summary %>% as.data.frame() %>% select(Rhat)),
+                                        max(jm.RLinf_Fk.Cm$summary %>% as.data.frame() %>% select(Rhat)),
+                                        max(jm.FLinf_Rk.Cm$summary %>% as.data.frame() %>% select(Rhat)),
+                                        max(jm.FLinf_Fk.Cm$summary %>% as.data.frame() %>% select(Rhat)))) %>%
+  arrange(by = LOOIC)
+
+#LOOIC.DIC.Cm
 ```
 
 # Results
@@ -174,7 +198,7 @@ ggplot(data = dat.1.Cm.CCL) +
 
 When the von Bertalanffy growth function was fitted to the length data, convergence was reached for all models according to the Gelman-Rubin Rhat statistic (Rhat < 1.1) and visual inspections of Markov chain Monte Carlo simulations (results not shown).  
 
-According to the DIC, the random L_inf and fixed k model was the best.  The median of the distribution of L_inf was ```r signif(jm.RLinf_Fk.Cm$q50$LinfMu, 2)``` cm (95% CI = ```r signif(jm.RLinf_Fk.Cm$q2.5$LinfMu, 2)``` cm - ```r signif(jm.RLinf_Fk.Cm$q97.5$LinfMu, 2)``` cm).  The median growth coefficient (k) was ```r signif(jm.RLinf_Fk.Cm$q50$k, 2)```  (95% CI = ```r signif(jm.RLinf_Fk.Cm$q2.5$k, 2)``` - ```r signif(jm.RLinf_Fk.Cm$q97.5$k, 2)```).  The median of A parameter (age at tagging minus the theoretical age at length = 0), ranged from ```r signif(min(jm.RLinf_Fk.Cm$q50$A), 3)``` to ```r signif(max(jm.RLinf_Fk.Cm$q50$A), 3)``` with the mean of ```r signif(mean(jm.RLinf_Fk.Cm$q50$A), 3)```.  All these estimates indicated slow growths of hawksbills in this environment.        
+According to the LOOIC, the random L_inf and fixed k model was the best.  The median of the distribution of L_inf was ```r signif(jm.RLinf_Fk.Cm$q50$LinfMu, 2)``` cm (95% CI = ```r signif(jm.RLinf_Fk.Cm$q2.5$LinfMu, 2)``` cm - ```r signif(jm.RLinf_Fk.Cm$q97.5$LinfMu, 2)``` cm).  The median growth coefficient (k) was ```r signif(jm.RLinf_Fk.Cm$q50$k, 2)```  (95% CI = ```r signif(jm.RLinf_Fk.Cm$q2.5$k, 2)``` - ```r signif(jm.RLinf_Fk.Cm$q97.5$k, 2)```).  The median of A parameter (age at tagging minus the theoretical age at length = 0), ranged from ```r signif(min(jm.RLinf_Fk.Cm$q50$A), 3)``` to ```r signif(max(jm.RLinf_Fk.Cm$q50$A), 3)``` with the mean of ```r signif(mean(jm.RLinf_Fk.Cm$q50$A), 3)```.  All these estimates indicated slow growths of hawksbills in this environment.        
 
 ```{r plot_vB,  echo=FALSE, fig.cap="Figure 4. Fitted von Bertalanffy growth model"}
 Linf <- jm.RLinf_Fk.Cm$q50$Linf
@@ -236,7 +260,7 @@ ggplot() +
 
 I fitted the CJS model to the capture-recapture histories for this preliminary analyses.  It may be worthwhile to explore other models, such as multi-state and robust-design, in the future.  Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (phi) and capture/recapture probability (p).  The abundance may be estimated through the Horowitz-Thompson estimator, where the number of captured individuals per temporal sampling period is divided by the estimated capture probability for that time period. The estimated survival rate should be considered as an apparent survival rate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
 
-The basic model can be extended to accomodate various modifications, such as time-dependent survival rates, time-dependent capture probability, covariate-dependent survival rates and capture probabilities.    
+The basic model can be extended to accommodate various modifications, such as time-dependent survival rates, time-dependent capture probability, covariate-dependent survival rates and capture probabilities.    
 
 ### Methods
 Capture history data were pooled by sampling seasons (summer and winter). Consequently, multiple captures within each season were treated as one capture. 

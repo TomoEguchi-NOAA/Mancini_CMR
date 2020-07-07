@@ -21,7 +21,7 @@ vonBert.jags.data <- function(dat.1, sp.code){
   
   k <- 1
   for (k in 1:length(unique.ID)){
-    tmp.ID <- filter(recap.data, ID == unique.ID[k])
+    tmp.ID <- filter(recap.data, ID == as.character(unique.ID[k]))
     size.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$CCL
     date.mat[k, 1:nrow(tmp.ID)] <- tmp.ID$DATE - min(tmp.ID$DATE)
     date.1[k] <- min(tmp.ID$DATE)
@@ -291,3 +291,34 @@ dat2CJS_covCCL <- function(dat.1){
   return(out)
   
 }
+
+
+compute.LOOIC <- function(loglik, data.vector, MCMC.params){
+  n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
+  
+  loglik.vec <- as.vector(loglik)
+  loglik.mat <- matrix(loglik.vec[!is.na(data.vector)], 
+                        nrow = MCMC.params$n.chains * n.per.chain)
+  
+  Reff <- relative_eff(exp(loglik.mat),
+                       chain_id = rep(1:MCMC.params$n.chains,
+                                      each = n.per.chain),
+                       cores = 4)
+  
+  loo.out <- rstanarm::loo(loglik.mat, 
+                           r_eff = Reff, 
+                           cores = 4, k_threshold = 0.7)
+  
+  out.list <- list(Reff = Reff,
+                   loo.out = loo.out)
+  
+  return(out.list)  
+}
+
+
+# Extracting posterior samples of deviance or any other variable from jags output:
+extract.samples <- function(varname, zm){
+  dev <- unlist(lapply(zm, FUN = function(x) x[, varname]))
+  return(dev)
+}
+

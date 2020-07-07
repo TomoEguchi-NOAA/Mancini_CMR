@@ -6,6 +6,8 @@
       L_Exp[i, j] <-  Linf *(1.0 - exp(-k*(A[i]+t[i, j -1])))
       tau[i, j] <- 1 / (pow((L_Exp[i,j] * CV), 2))
       
+      loglik[i,j] <- logdensity.norm(L[i,j], L_Exp[i,j], tau[i,j])
+      
       # posterior prediction
       #L.pred[i, j] ~ dnorm(L_Exp[i, j], tau)
       #p.value[i, j] <- step(L.pred[i, j] - L[i, j])
@@ -16,6 +18,7 @@
     L_Exp[i, 1] <- Linf *(1.0 - exp(-k*A[i]))	
     tau[i,1] <- 1 / (pow((L_Exp[i,1] * CV), 2))
     #var1[i] <- 1/tau[i,1]
+    loglik[i,1] <- logdensity.norm(L[i,1], L_Exp[i,1], tau[i,1])
     
     # posterior prediction
     #L.pred[i, 1] ~ dnorm(L_Exp[i, 1], tau)

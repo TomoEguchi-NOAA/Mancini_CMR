@@ -3,7 +3,7 @@ title: "Capture recapture analyses of greens for Agnese Mancini"
 output: html_notebook
 ---
 
-This document describes data analysis of Agnese Mancini's data of green turtle capture recapture events of hawksbill turtles using the augmented method (Kery and Schaub). 
+This document describes data analysis of Agnese Mancini's data of green turtle capture recapture events of green  turtles using the augmented method (Kery and Schaub). 
 
 
 Initialize the workspace
@@ -81,7 +81,7 @@ Pdot model
 if (!file.exists(paste0("RData/CJS_pdot_Cm_JAGS.rds"))){
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
-  parameters <- c("mean.p", "mean.phi", "N", "deviance")
+  parameters <- c("mean.p", "mean.phi", "N", "deviance", "loglik")
   
   # inits <- lapply(replicate(MCMC.params$n.chains, 
   #                           CH, 
@@ -117,7 +117,7 @@ if (!file.exists(paste0("RData/CJS_pt_Cm_JAGS.rds"))){
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
-  parameters <- c("p", "mean.phi", "N", "deviance")
+  parameters <- c("p", "mean.phi", "N", "deviance", "loglik")
   
   jm.pt <- jags(data = jags.data,
                 #inits = inits,
@@ -565,6 +565,7 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds"))){
   phiAgeClass.TSM.pt <- readRDS("RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds")
 }
 ```
+
 Look at the results and compare which model may be better:
 
 ```{r}
@@ -608,6 +609,7 @@ gamma[1] is < 90 cm and gamma[2] is >= 90 cm. Interesting to see that gamma[2] h
 ```{r}
 mcmc_dens(phiAgeClass.pt$jags.out$samples, c("gamma[1]", "gamma[2]"))
 ```
+
 
 ```{r}
 gamma.stats <- phiAgeClass.pt$jags.out$summary[grep("gamma", 

@@ -31,6 +31,7 @@ model {
       # observation process
       y[i,t] ~ dbern(mu2[i,t])
       mu2[i,t] <- mean.p * z[i,t]  
+      loglik[i,t] <- logdensity.bern(y[i,t], mu2[i,t])
     }
   }
 

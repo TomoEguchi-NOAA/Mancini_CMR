@@ -17,6 +17,7 @@ library(bayesplot)
 library(ggridges)
 library(RMark)
 library(loo)
+library(R2ucare)
 
 save.fig <- F
 
@@ -340,23 +341,199 @@ There were ```r nrow(data.CJS)``` individuals in the capture records, where the 
 
 For this report, I use results from Mark because Bayesian analysis is taking a lot of time due to the large dataset.  Goodness-of-fit has been conducted and, although some questions remain as to the CJS model may not be perfect, in general, it is accepted.  
 
-```{r GOF, echo=FALSE}
+#### Goodness-of-fit
+```{r GOF_test3sr, echo=FALSE, include=F, cache=T}
 #CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
+library(R2ucare)
 
 # using R2ucare::group_data to combine CHs
-CH.2 <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
+CH.Ucare <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
 
 # Need to do some GOF testing here.
+# TEST3.SR tests the hypothesis that there is no difference among previously and newly marked
+#individuals captured at time (i) in the probability of being recaptured at some later time > i (i.e., that
+#whether or not an animal is ever encountered again is not a function of whether or not it is newly
+#marked).
+test3sr_Cm <- test3sr(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY) #[, 1:(ncol(CH.2)-1)]), CH.2$effY)
 
+test3sr.details <- test3sr_Cm$details
+
+test3sr.signif <- filter(test3sr.details, p_val < 0.05)
+```
+
+TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." 
+
+
+```{r table_test3sr, echo=F, include=T}
+knitr::kable(test3sr.signif, 
+             digits = 2,
+             col.names = c("Occasion", "Stat", "p val", "signed test", "test"),
+             caption = "Table 2. Significant results from Test3.sr, which evaluates difference in survival among individuals depending on whether or not they were seen for the first time either on or before the i-th occasion",
+             table.attr = "style='width:30%;'")
+```
+
+TEST3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again.  "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
+
+```{r test3.sm, echo=F, include=F, cache=T}
+# TEST3.Sm tests the hypothesis that there is no difference in the expected
+# time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at
+# least once
+test3sm_Cm <- test3sm(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
+
+test3sm.details <- test3sm_Cm$details
+test3sm.signif <- filter(test3sm.details, p_val < 0.05)
+```
+
+
+```{r table_test3sm, echo=F, include=T}
+knitr::kable(test3sm.signif, 
+             digits = 2,
+             col.names = c("Occasion", "Stat", "p val", "signed test", "test"),
+             caption = "Table 3. Significant results from Test3.sm, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
+             table.attr = "style='width:30%;'")
+```
+
+To make a comparison, I look at an occasion that passed the test:
+
+```{r test3m_passed, echo=F, include=F}
+# first filter rows with 1s on the 25th column
+data.25 <- filter(CJS.data$data, CJS.data$data[, 25] > 0) #%>%
+# then look at recaptures since the 25th occasion
+data.25 <- data.25[, 25:ncol(data.25)]
+
+# look at the recaptures, given they were caught on the 25th occasion. 
+data.25.3sm <- data.25[, c(2:ncol(data.25))]
+rowSums.25<- rowSums(data.25.3sm)
+```
+
+
+Then look at what happened in those occasions (4, 7, 36). 
+
+```{r test3m_failed, echo=F, include=F}
+# first filter rows with 1s on the 4th column
+data.4 <- filter(CJS.data$data, CJS.data$data[, 4] > 0) #%>%
+# then look at recaptures since the 4th occasion
+data.4 <- data.4[, 4:ncol(data.4)]
+
+# look at the recaptures, given they were caught on the 4th occasion. 
+data.4.3sm <- data.4[, c(2:ncol(data.4))]
+rowSums.4 <- rowSums(data.4.3sm)
+
+# first filter rows with 1s on the 7th column
+data.7 <- filter(CJS.data$data, CJS.data$data[, 7] > 0) #%>%
+# then look at recaptures since the 7th occasion
+data.7 <- data.7[, 7:ncol(data.7)]
+
+# look at the recaptures, given they were caught on the 7th occasion. 
+data.7.3sm <- data.7[, c(2:ncol(data.7))]
+rowSums.7 <- rowSums(data.7.3sm)
+
+data.36 <- filter(CJS.data$data, CJS.data$data[, 36] > 0) #%>%
+
+# then look at recaptures since the 7th occasion
+data.36 <- data.36[, 36:ncol(data.36)]
+
+# this is the second to last occasion.  
+data.36.3sm <- data.36[, c(2:ncol(data.36))]
+
+# n.caps.36.sm <- rowSums(data.36.3sm)
+rowSums.36 <- sum(data.36.3sm)
+#rowSums(data.36.3sm)
 
 ```
+
+I see that there are some recaptures that are unusually high - a 5 and 3.  This is probably why this occasion was flagged. 
+
+Seems awfully a small number of captures at the 7th occasion. Of these, only 3 were recaptured more than once after it was released on the 7th occasion. It still doesn't make much sense... 
+
+Of 429 turtles caught on the 36th occasion, 11 were caught again on the 37th (final) occasion.  These are for January and August of 2019.  Not sure why statistics = 0 in these two occasions. 
+
+TEST2.CT tests the hypothesis that "there is no difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions.  
+
+```{r test2ct, echo=F, include=F}
+# TEST2.CT tests the hypothesis that there is no difference in the probability of being 
+# recaptured at i+1 between those captured and not captured at occasion i, conditional 
+# on presence at both occasions.
+test2ct_Cm <- test2ct(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
+
+test2ct_Cm.details <- test2ct_Cm$details
+test2ct.signif <- filter(test2ct_Cm.details, p_val < 0.05)
+```
+
+
+```{r table_test2ct, echo=F, include=T}
+knitr::kable(test2ct.signif, 
+             digits = 2,
+             col.names = c("Occasion", "DF", "Stat", "p val", "signed test", "test"),
+             caption = "Table 4. Significant results from Test2.ct, which evaluates difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions",
+             table.attr = "style='width:30%;'")
+```
+
+There were four occasions when the test failed at alpha = 0.05; one (22) was positive and three were negative (4, 16, and 32). With alpha = 0.01, only one (16) was rejected. 
+
+TEST2.CL tests if there is no difference in the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t and t + 2.  
+
+```{r test2cl, echo=F, include=F, warning=F}
+# The null hypothesis being tested in TEST2.CL is that there is no difference in
+# the expected time of next recapture between the individuals captured and not captured at occasion i
+# conditional on presence at both occasions i and i+2. To date, this test has no ‘simple’ interpretation, but
+#it is a component test of the overall TEST2 fit statistic.
+test2cl_Cm <- test2cl(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
+
+test2cl_Cm.details <- test2cl_Cm$details
+test2cl.signif <- filter(test2cl_Cm.details, p_val < 0.05)
+```
+
+
+```{r table_test2cl, echo=F, include=T}
+knitr::kable(test2cl.signif, 
+             digits = 2,
+             col.names = c("Occasion", "DF", "Stat", "p val", "test"),
+             caption = "Table 5. Significant results from Test2.cl, which evaluates the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t and t + 2",
+             table.attr = "style='width:30%;'")
+```
+
+There were six occasions that were flagged (alpha = 0.05), which were all positive.  Occasions 16 and 22 failed the 2ct and 2cl tests. With alpha = 0.01, two are "significant": occasions 14 and 34. 
+
+
+```{r test_overall, echo=F, include=F, warning=F}
+
+# one estimate for c-hat is to take the overall chi-2 (sum of the TEST 2 and TEST 3 component tests), 
+# and divide by the overall degrees of freedom.
+
+# look at the overall results
+test_all_Cm <- overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                      freq = CH.Ucare$effY)
+
+c_hat <- test_all_Cm$chi2/test_all_Cm$degree_of_freedom
+
+# using Justin's equations from Howick's data:
+stat_new <- overall_CJS(as.matrix(CJS.data$data),
+                        rep(1, nrow(CJS.data$data)))$chi2 -
+  (test3sr(as.matrix(CJS.data$data),
+           rep(1, nrow(CJS.data$data)))$test3sr[[1]])
+df_new <- overall_CJS(as.matrix(CJS.data$data),
+                      rep(1, nrow(CJS.data$data)))$degree_of_freedom -
+  (test3sr(as.matrix(CJS.data$data), rep(1, nrow(CJS.data$data)))$test3sr[[2]])
+
+#1-pchisq(stat_new, df_new)
+
+```
+
+Estimated chat was ```r signif(c_hat, digits = 3)```. Although this is not a great value, I've seen a lot worse... so, I'm going to move on with this. With a Windows computer, I could export the results with the estimated c-hat value and run the median c-hat analysis... but is it necessary? 
+
+There were some violations of assumptions at some capture occasions but many passed the tests. 
 
 The comparison of the models showed that one with transients effect on survival (phi(TSM)) and time-dependent capture probability (p(time)) was the best. 
 
 ```{r table_model_comparison, echo=FALSE, include=TRUE}
 knitr::kable(mark.table.2, 
              digits = 2,
-             caption = "Table 2. A comparison of 14 CJS models fitted to CMR data of green turtles. ",
+             caption = "Table 6. A comparison of 14 CJS models fitted to CMR data of green turtles. ",
              table.attr = "style='width:30%;'")
 ```
 

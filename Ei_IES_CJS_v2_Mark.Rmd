@@ -228,6 +228,8 @@ test2cl_Ei <- test2cl(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]),
 test_all_Ei <- overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
                       freq = CH.Ucare$effY)
 
+c_hat <- test_all_Ei$chi2/test_all_Ei$degree_of_freedom
+
 # using Justin's equations from Howick's data:
 stat_new <- overall_CJS(as.matrix(CJS.data$data),
                         rep(1, nrow(CJS.data$data)))$chi2 -

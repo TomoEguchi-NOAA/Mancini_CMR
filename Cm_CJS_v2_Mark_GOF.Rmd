@@ -72,7 +72,7 @@ test3sr.details <- test3sr_Cm$details
 filter(test3sr.details, p_val < 0.05)
 ```
 
-Occasions 3, 5, 14, 23, 25, 30, and 31 were "rejected" at alpha = 0.05.  If we lower the alpha value to be 0.01, only two (3 and 23) were problematic.  Still, the entire test was rejected.  TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." We probalby had more (I'm assuming this from signed_test values...) seen after these occasions than expected.  Could this mean that these seasons included individuas that were "more" residents than from other seasons? 
+Occasions 3, 5, 14, 23, 25, 30, and 31 were "rejected" at alpha = 0.05.  If we lower the alpha value to be 0.01, only two (3 and 23) were problematic.  Still, the entire test was rejected.  TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." We probalby had more (I'm assuming this from signed_test values...) seen after these occasions than expected.  Could this mean that these seasons included individuals that were "more" residents than from other seasons? 
 
 TEST3.SM, on the other hand, looks at individuals who were seen again.  "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i). So, let's take a look at that result.
 
@@ -82,6 +82,7 @@ filter(test3sm.details, p_val < 0.05)
 ```
 
 There are 3 occasions that violated the assumptions; 4, 7, and 36.  The 7th and 36th occasions seem to have weird output with no statistics computed for them.  Why would df = 0?  
+
 To make a comparison, I look at an occasion that passed the test:
 
 ```{r}

@@ -157,7 +157,7 @@ if (!file.exists(paste0("RData/CJS_pTrapResponse_Cm_JAGS.rds"))){
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
-  parameters <- c("beta", "mean.phi", "deviance")
+  parameters <- c("beta", "mean.phi", "deviance", "loglik")
   
   jm.pt.TrapResponse <- jags(data = jags.data,
                              #inits = inits,
@@ -199,7 +199,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pt_Cm_JAGS.rds"))){
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
-  parameters <- c("gamma", "p", "N", "prop.trans", "deviance")
+  parameters <- c("gamma", "p", "N", "prop.trans", "deviance", "loglik")
   
   jm.PhiTSM.pt <- jags(data = jags.data,
                        #inits = inits,
@@ -240,7 +240,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pTSM_Cm_JAGS.rds"))){
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
-  parameters <- c("gamma", "beta", "prop.trans", "deviance")
+  parameters <- c("gamma", "beta", "prop.trans", "deviance", "loglik")
   
   jm.PhiTSM.pTSM <- jags(data = jags.data,
                        #inits = inits,
@@ -289,7 +289,7 @@ if (!file.exists(paste0("RData/CJS_PhiTSM_pEff_Cm_JAGS.rds"))){
   ## summary statistics indices at the end of this script. 
   parameters <- c("gamma", "p", "mu", 
                   "beta", "N", "prop.trans", 
-                  "sigma",  "deviance")
+                  "sigma",  "deviance", "loglik")
   
   jm.PhiTSM.pEff <- jags(data = jags.data,
                          #inits = inits,
@@ -375,7 +375,7 @@ if (!file.exists(paste0("RData/CJS_PhiMinCCL_pdot_Cm_JAGS.rds"))){
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
-  parameters <- c("mean.p", "mu", "beta", "sigma", "N", "deviance")
+  parameters <- c("mean.p", "mu", "beta", "sigma", "N", "deviance", "loglik")
   
   jags.data$x <- 
   jm.PhiMinCCL.pdot <- jags(data = jags.data,
@@ -482,7 +482,7 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_pt_Cm_JAGS.rds"))){
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script. 
-  parameters <- c("p", "mu", "gamma", "sigma", "N", "deviance")
+  parameters <- c("p", "mu", "gamma", "sigma", "N", "deviance", "loglik")
   
   jm.PhiAgeClass.pt <- jags(data = jags.data,
                          #inits = inits,
@@ -543,7 +543,7 @@ if (!file.exists(paste0("RData/CJS_PhiAgeClass_TSM_pt_Cm_JAGS.rds"))){
 
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics indices at the end of this script.
-  parameters <- c("p", "mu", "gamma", "sigma", "N", "deviance")
+  parameters <- c("p", "mu", "gamma", "sigma", "N", "deviance", "loglik")
 
   jm.PhiAgeClass.TSM.pt <- jags(data = jags.data,
                                 #inits = inits,

@@ -1,0 +1,154 @@
+---
+title: "von Bertalanffy analysis summary"
+output: html_notebook
+---
+
+
+```{r}
+rm(list = ls())
+library(ggplot2)
+library(tidyverse)
+library(bayesplot)
+library(rjags)
+library(loo)
+
+source("Mancini_functions.R")
+```
+
+
+This document summarizes results of somatic growth analysis for Agnese Mancini's capture-recapture data of marine turtles. Two species were analyzed: greens and hawksbills.
+
+Retrieve data first:
+
+```{r}
+dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+
+#dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+# Lo doesn't have enough (>2) recaptures. 
+#spp <- c("Cm", "Ei") #unique(dat.1$species)
+
+  
+```
+
+
+First greens:
+```{r}
+jags.data <- vonBert.jags.data(dat.1.Cm, "Cm")
+
+jm.RLinf_Rk.Cm <- readRDS("RData/Rlinf_Rk_Cm_Aug2020.rds")
+jm.RLinf_Fk.Cm <- readRDS("RData/Rlinf_Fk_Cm_Aug2020.rds")
+jm.FLinf_Rk.Cm <- readRDS("RData/Flinf_Rk_Cm_Aug2020.rds")
+jm.FLinf_Fk.Cm <- readRDS("RData/Flinf_Fk_Cm_Aug2020.rds")
+
+# DIC.df <- data.frame(model.names = c("RLinf_Rk", "RLinf_Fk", "FLinf_Rk", "FLinf_Fk"),
+#                      DIC = c(jm.RLinf_Rk.Cm$DIC, jm.RLinf_Fk.Cm$DIC, jm.FLinf_Rk.Cm$DIC, jm.FLinf_Fk.Cm$DIC)) %>%
+#   arrange(by = DIC)
+
+LOOIC.RLinf_Rk.Cm <- readRDS("RData/LOO_Rlinf_Rk_Cm_Aug2020.rds")
+LOOIC.RLinf_Fk.Cm <- readRDS("RData/LOO_Rlinf_Fk_Cm_Aug2020.rds")
+LOOIC.FLinf_Rk.Cm <- readRDS("RData/LOO_Flinf_Rk_Cm_Aug2020.rds")
+LOOIC.FLinf_Fk.Cm <- readRDS("RData/LOO_Flinf_Fk_Cm_Aug2020.rds")
+
+LOOIC.DIC.Cm <- data.frame(model = c("RLinf_Rk", "RLinf_Fk", "FLinf_Rk", "FLinf_Fk"),
+                           LOOIC = c(LOOIC.RLinf_Rk.Cm$loo.out$estimates["looic", "Estimate"],
+                                     LOOIC.RLinf_Fk.Cm$loo.out$estimates["looic", "Estimate"],
+                                     LOOIC.FLinf_Rk.Cm$loo.out$estimates["looic", "Estimate"],
+                                     LOOIC.FLinf_Fk.Cm$loo.out$estimates["looic", "Estimate"]),
+                           SE = c(LOOIC.RLinf_Rk.Cm$loo.out$estimates["looic", "SE"],
+                                  LOOIC.RLinf_Fk.Cm$loo.out$estimates["looic", "SE"],
+                                  LOOIC.FLinf_Rk.Cm$loo.out$estimates["looic", "SE"],
+                                  LOOIC.FLinf_Fk.Cm$loo.out$estimates["looic", "SE"]),
+                           DIC = c(jm.RLinf_Rk.Cm$DIC, 
+                                   jm.RLinf_Fk.Cm$DIC, 
+                                   jm.FLinf_Rk.Cm$DIC, 
+                                   jm.FLinf_Fk.Cm$DIC),
+                           max.Rhat = c(max(jm.RLinf_Rk.Cm$summary %>% as.data.frame() %>% select(Rhat)),
+                                        max(jm.RLinf_Fk.Cm$summary %>% as.data.frame() %>% select(Rhat)),
+                                        max(jm.FLinf_Rk.Cm$summary %>% as.data.frame() %>% select(Rhat)),
+                                        max(jm.FLinf_Fk.Cm$summary %>% as.data.frame() %>% select(Rhat)))) %>%
+  arrange(by = LOOIC)
+
+LOOIC.DIC.Cm
+```
+
+
+According to LOOIC, random Linf and fixed k parameter model was considered best for green turtles. Look at the Pareto-k statistic for the goodness-of-fit.
+
+```{r}
+pareto_k_table(LOOIC.RLinf_Fk.Cm$loo.out)
+```
+
+Some are not very good but 95% of data were ok or good. So, moving on with the model. 
+
+Take a look at some posteriors to see if convergence was okay.  According to the Rhat statistics, they were okay.
+
+```{r}
+mcmc_trace(jm.RLinf_Fk.Cm$samples, c("LinfMu", "k", "Shape", "rate"))
+```
+
+Not great but they look okay. 
+
+
+```{r}
+mcmc_dens(jm.RLinf_Fk.Cm$samples, c("LinfMu", "k", "Shape", "rate"))
+```
+
+Next, I plot the fitted von Bertalanffy function. Need to use the joint posterior, not parameter-wise credible intervals.
+```{r}
+k.samples <- extract.samples("k", jm.RLinf_Fk.Cm$samples)
+
+time.vec <- 0:59
+
+unique.ID <- jags.data$ID
+
+time.mat <- L_Exp.med <- L_Exp.lo <- L_Exp.hi <- matrix(ncol = length(unique.ID), nrow = length(time.vec))
+
+t <- i <- 1
+for (i in 1:length(unique.ID)){
+  A.samples <- extract.samples(paste0("A[", i, "]"), jm.RLinf_Fk.Cm$samples)
+  Linf.samples <- extract.samples(paste0("Linf[", i, "]"), jm.RLinf_Fk.Cm$samples)
+  for (t in 1:length(time.vec)){
+    L_Exp <-  Linf.samples * (1.0 - exp(-k.samples * (A.samples + time.vec[t])))
+    L_Exp.med[t,i] <- quantile(L_Exp, 0.5)
+    L_Exp.lo[t,i] <- quantile(L_Exp, 0.025)
+    L_Exp.hi[t,i] <- quantile(L_Exp, 0.975)
+    
+    time.mat[t,i] <- quantile(A.samples + time.vec[t], 0.5)
+  }
+
+}
+
+colnames(L_Exp.med) <- unique.ID
+L_Exp_long <- melt(L_Exp.med)
+colnames(L_Exp_long) <- c("time1", "ID", "CCL")
+
+colnames(L_Exp.lo) <- unique.ID
+L_Exp.lo_long <- melt(L_Exp.lo)
+colnames(L_Exp.lo_long) <- c("time1", "ID", "CCL")
+
+colnames(L_Exp.hi) <- unique.ID
+L_Exp.hi_long <- melt(L_Exp.hi)
+colnames(L_Exp.hi_long) <- c("time1", "ID", "CCL")
+
+colnames(time.mat) <- unique.ID
+time_long <- melt(time.mat)
+colnames(time_long) <- c("time1", "ID", "Years")
+
+L_Exp_long$Years <- time_long$Years
+L_Exp.lo_long$Years <- time_long$Years
+L_Exp.hi_long$Years <- time_long$Years
+
+ggplot() + 
+  geom_path(data = L_Exp_long,
+            aes(x = Years, y = CCL, color = ID)) +
+  geom_path(data = L_Exp.lo_long,
+            aes(x = Years, y = CCL, color = ID),
+            linetype = 2) +
+  geom_path(data = L_Exp.hi_long,
+            aes(x = Years, y = CCL, color = ID),
+            linetype = 2) +
+  
+  theme(legend.position = "none")
+```
+

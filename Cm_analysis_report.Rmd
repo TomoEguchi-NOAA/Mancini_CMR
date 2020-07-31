@@ -42,26 +42,30 @@ I used the leave-one-out information criteria (LOOIC) to compare the performance
 
 # data/GTC_Cm Data_updated_2020-04-28.xls
 # Removed some columns (text) and converted ", " to "_"
-#
-# Some error were fixed:
-#106 Capture_time time like %H:%M 06:35 ¿am o pm?  "¿am o pm?" was deleted 
-#107 Capture_time time like %H:%M 06:50 ¿am o pm?  "¿am o pm?" was deleted 
-#508 Capture_time time like %H:%M 17:00-18:00      "17:00-18:00" was replaced with "17:30"  
-#889 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted
-#890 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted
-#891 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted  
-#892 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
-#893 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
-#894 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
-#895 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
-#896 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted 
-#897 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25"
-#899 Capture_time time like %H:%M 18:50 hora de revision de la red  "hora de revision de la red" was deleted
-#900 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25"
-916 Capture_time time like %H:%M 21:00 hora de primera revisada   'data/GTC_Cm Data_updated_2020-04-28_TE.csv'
 
-dat.1 <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE.csv")
-dat.1.Cm <- filter(dat.1, species == "Cm")
+#dat.1 <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE.csv")
+# Capture_time included too many text so the field was deleted and v2 created.
+
+dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+
+#"No disponible" were replaced with NA e.g.,
+# row        col               expected actual                                            file
+# 1549 End_time time like %H:%M No disponible 'data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv'
+
+# The following lines were corrected
+# 1711 Day        an integer                 ?  "?" was replaced with "1" from Capture date
+# 8723 TTL        no trailing characters     ,6 "8,6" was replaced with "8.6" Line # is off by 4? (Line 8728)
+# 8911 TTL        a double                   ND "ND" wa replaced with "NA" Line # is off by 4?
+# 9127 Start_time time like %H:%M            na "na" replaced with "NA"
+# 9127 End_time   time like %H:%M            na "na" replaced with "NA"
+# 9343 Capture_date date like %m/%d/%Y 26?05/2019 "26?05/2019" was replaced with "5/26/2019" 
+# 9344 Capture_date date like %m/%d/%Y 26?05/2019 
+# 9345 Capture_date date like %m/%d/%Y 26?05/2019 
+# 9346 Capture_date date like %m/%d/%Y 26?05/2019 
+# 9347 Capture_date date like %m/%d/%Y 26?05/2019 
+# 10071  PL a double     SD  "SD" replaced with "NA". Line 10076
+
+#dat.1.Cm <- filter(dat.1, species == "Cm")
 
 ID.CCLna <- dat.1.Cm[which(is.na(dat.1.Cm$CCL)),]
 
@@ -84,7 +88,7 @@ CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
 data.CCL  %>% left_join(data.CJS, by = "ID") %>%
   select(min_CCL) -> cov.CCL
 
-jags.data <- vonBert.jags.data(dat.1, "Cm")
+jags.data <- vonBert.jags.data(dat.1.Cm, "Cm")
 
 jm.RLinf_Rk.Cm <- readRDS("RData/Rlinf_Rk_Cm.rds")
 jm.RLinf_Fk.Cm <- readRDS("RData/Rlinf_Fk_Cm.rds")

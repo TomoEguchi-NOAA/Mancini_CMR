@@ -64,7 +64,6 @@ get.data.Cm <- function(filename){
                   Lat = col_double(),
                   Long = col_double(),
                   Capture_date = col_date(format = "%m/%d/%Y"),
-                  Capture_time = col_time(format = "%H:%M"),
                   Species = col_character(),
                   SCL = col_double(),
                   SCW = col_double(),
@@ -83,7 +82,7 @@ get.data.Cm <- function(filename){
   dat.1 <- read_csv(file = filename, col_types = col.def)
   
   dat.1 %>% mutate(ID = as.factor(Turtle_ID),
-                   CDATE = as.Date(paste0(year, "-", month, "-", day))) %>% 
+                   CDATE = Capture_date) %>% 
     transmute(ID = ID,
               detect = 1,
               DATE = CDATE,
@@ -91,7 +90,8 @@ get.data.Cm <- function(filename){
               SCL = SCL,
               CCL = CCL,
               weight_kg = Weight,
-              sex = Sex)-> dat.1
+              sex = Sex,
+              species = Sp_code)-> dat.1
   
   return(dat.1)
 }

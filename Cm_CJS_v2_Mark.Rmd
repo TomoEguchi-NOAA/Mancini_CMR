@@ -60,7 +60,9 @@ do_analysis <- function(dp, ddl)
 Bring in the data file and get ready for CJS
 
 ```{r warning=F}
-dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+#dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+dat.1 <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
 
 dat.1 %>% filter(species == "Cm") -> dat.1.Cm
 

@@ -38,7 +38,29 @@ There are two growth parameters in the von Bertalanffy function: L_inf and k.  L
 I used the leave-one-out information criteria (LOOIC) to compare the performance of the four models (Vehtari et al. 2017))
 
 ```{r load_data, include=FALSE, echo=FALSE, cache=T}
-dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+#dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+# data/GTC_Cm Data_updated_2020-04-28.xls
+# Removed some columns (text) and converted ", " to "_"
+#
+# Some error were fixed:
+#106 Capture_time time like %H:%M 06:35 ¿am o pm?  "¿am o pm?" was deleted 
+#107 Capture_time time like %H:%M 06:50 ¿am o pm?  "¿am o pm?" was deleted 
+#508 Capture_time time like %H:%M 17:00-18:00      "17:00-18:00" was replaced with "17:30"  
+#889 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted
+#890 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted
+#891 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted  
+#892 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
+#893 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
+#894 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
+#895 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25" 
+#896 Capture_time time like %H:%M 18:50 hora de revision de la red   "hora de revision de la red" was deleted 
+#897 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25"
+#899 Capture_time time like %H:%M 18:50 hora de revision de la red  "hora de revision de la red" was deleted
+#900 Capture_time time like %H:%M 21:10-21:45 "21:10-21:45" was replaced with "21:25"
+916 Capture_time time like %H:%M 21:00 hora de primera revisada   'data/GTC_Cm Data_updated_2020-04-28_TE.csv'
+
+dat.1 <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE.csv")
 dat.1.Cm <- filter(dat.1, species == "Cm")
 
 ID.CCLna <- dat.1.Cm[which(is.na(dat.1.Cm$CCL)),]

@@ -39,6 +39,63 @@ vonBert.jags.data <- function(dat.1, sp.code){
               ID = unique.ID))
 }
 
+get.data.Cm <- function(filename){
+  col.def <- cols(Event_ID = col_character(),
+                  Turtle_no = col_integer(),
+                  Count = col_integer(),
+                  Season = col_character(),
+                  Year = col_integer(),
+                  Month = col_integer(),
+                  Day = col_integer(),
+                  Sp_code = col_character(),
+                  Turtle_ID = col_character(),
+                  Recapture = col_character(),
+                  Community_code = col_character(),
+                  Start_date = col_date(format = "%m/%d/%Y"),
+                  Start_time = col_time(format = "%H:%M"),
+                  End_time = col_time(format = "%H:%M"),
+                  Tot_hours = col_double(),
+                  Tot_hours_estimated = col_double(),
+                  Monitoring_type = col_character(),
+                  Monitoring_technique = col_character(),
+                  Region = col_character(),
+                  Site_type_general = col_character(),
+                  Type_site_specific = col_character(),
+                  Lat = col_double(),
+                  Long = col_double(),
+                  Capture_date = col_date(format = "%m/%d/%Y"),
+                  Capture_time = col_time(format = "%H:%M"),
+                  Species = col_character(),
+                  SCL = col_double(),
+                  SCW = col_double(),
+                  CCL = col_double(),
+                  CCW = col_double(),
+                  BD = col_double(),
+                  PL = col_double(),
+                  TTL = col_double(),
+                  Weight = col_double(),
+                  Sex = col_character(),
+                  Right_tag_new = col_character(),
+                  Left_tag_new = col_character(),
+                  Right_tag_old = col_character(),
+                  Left_tag_old = col_character())
+  
+  dat.1 <- read_csv(file = filename, col_types = col.def)
+  
+  dat.1 %>% mutate(ID = as.factor(Turtle_ID),
+                   CDATE = as.Date(paste0(year, "-", month, "-", day))) %>% 
+    transmute(ID = ID,
+              detect = 1,
+              DATE = CDATE,
+              season = as.factor(Season),
+              SCL = SCL,
+              CCL = CCL,
+              weight_kg = Weight,
+              sex = Sex)-> dat.1
+  
+  return(dat.1)
+}
+
 get.data <- function(filename){
   col.def <- cols(monitoring_event = col_character(),
                   value = col_integer(),

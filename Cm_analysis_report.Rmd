@@ -27,7 +27,7 @@ source("Mancini_functions.R")
 
 This document summarizes preliminary analyses of capture-recapture data for green turtles.  The data were used to investigate somatic growth patterns and to estimate survival rates and abundance.  Growths patterns of green turtles were determined by fitting the von Bertalanffy function to repeated measurements of CCL.  To estimate survival and abundance, the Cormack-Jolly-Seber capture-mark-recapture (CJS CMR) model was fitted to the capture-recapture histories. In the following, I will summarize the preliminary results of the analyses.  
 
-All statistical analyses were conducted using the R statistical environment (v. 3.6.1, R Development Team).
+All statistical analyses were conducted using the R statistical environment (v. ```r paste0(R.version$major, ".", R.version$minor)```, R Development Team).
 
 # Somatic growth
 ## Methods
@@ -90,16 +90,16 @@ data.CCL  %>% left_join(data.CJS, by = "ID") %>%
 
 jags.data <- vonBert.jags.data(dat.1.Cm, "Cm")
 
-jm.RLinf_Rk.Cm <- readRDS("RData/Rlinf_Rk_Cm.rds")
-jm.RLinf_Fk.Cm <- readRDS("RData/Rlinf_Fk_Cm.rds")
-jm.FLinf_Rk.Cm <- readRDS("RData/Flinf_Rk_Cm.rds")
-jm.FLinf_Fk.Cm <- readRDS("RData/Flinf_Fk_Cm.rds")
+jm.RLinf_Rk.Cm <- readRDS("RData/Rlinf_Rk_Cm_Aug2020.rds")
+jm.RLinf_Fk.Cm <- readRDS("RData/Rlinf_Fk_Cm_Aug2020.rds")
+jm.FLinf_Rk.Cm <- readRDS("RData/Flinf_Rk_Cm_Aug2020.rds")
+jm.FLinf_Fk.Cm <- readRDS("RData/Flinf_Fk_Cm_Aug2020.rds")
 
 
-LOOIC.RLinf_Rk.Cm <- readRDS("RData/LOO_Rlinf_Rk_Cm.rds")
-LOOIC.RLinf_Fk.Cm <- readRDS("RData/LOO_Rlinf_Fk_Cm.rds")
-LOOIC.FLinf_Rk.Cm <- readRDS("RData/LOO_Flinf_Rk_Cm.rds")
-LOOIC.FLinf_Fk.Cm <- readRDS("RData/LOO_Flinf_Fk_Cm.rds")
+LOOIC.RLinf_Rk.Cm <- readRDS("RData/LOO_Rlinf_Rk_Cm_Aug2020.rds")
+LOOIC.RLinf_Fk.Cm <- readRDS("RData/LOO_Rlinf_Fk_Cm_Aug2020.rds")
+LOOIC.FLinf_Rk.Cm <- readRDS("RData/LOO_Flinf_Rk_Cm_Aug2020.rds")
+LOOIC.FLinf_Fk.Cm <- readRDS("RData/LOO_Flinf_Fk_Cm_Aug2020.rds")
 
 LOOIC.DIC.Cm <- data.frame(model = c("RLinf_Rk", "RLinf_Fk", "FLinf_Rk", "FLinf_Fk"),
                            LOOIC = c(LOOIC.RLinf_Rk.Cm$loo.out$estimates["looic", "Estimate"],
@@ -319,7 +319,9 @@ The basic model can be extended to accommodate various modifications, such as ti
 ### Methods
 
 ```{r CMR_data, include=FALSE, echo=FALSE, cache=T}
-dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+dat.1 <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+#dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
 dat.1 %>% filter(species == "Cm") -> dat.1.Cm
 CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
@@ -574,7 +576,8 @@ The estimated survival rate of the residents was ```r signif(cm.results$Phi.tsm.
 Abundance was computed from the estimated capture probability and the number of captured turtles per season using the Horvitz-Thompson estimator. 
 
 ```{r Nhats, echo=FALSE, include=F, cache=T}
-phats <- cm.results$Phi.tsm.p.t$results$real[3:38, c("estimate", "lcl", "ucl")]
+phats <- cm.results$Phi.tsm.p.t$results$real[3:nrow(cm.results$Phi.tsm.p.t$results$real), 
+                                             c("estimate", "lcl", "ucl")]
 phats$season <- colnames(CJS.data$data)[2:(ncol(CJS.data$data))]
 
 n.caught <- colSums(CJS.data$data)

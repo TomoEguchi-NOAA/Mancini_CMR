@@ -44,7 +44,7 @@ Find those that were captured more than once: (or better to use more than twice 
 
 ```{r}
 s <- 1
-jags.data <- vonBert.jags.data(dat.1.Cm, "Cm")
+jags.data <- Cm.vonBert.jags.data(dat.1.Cm)
 data.vector <- as.vector(jags.data$jags.data$L) %>% 
   rep(each = MCMC.params$n.chains * n.per.chain)
 

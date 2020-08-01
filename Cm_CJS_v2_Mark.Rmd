@@ -62,9 +62,10 @@ Bring in the data file and get ready for CJS
 ```{r warning=F}
 #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
-dat.1 <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
 
-dat.1 %>% filter(species == "Cm") -> dat.1.Cm
+# there are In in the species code... 
+#dat.1 %>% filter(species == "Cm") -> dat.1.Cm
 
 CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
 
@@ -184,7 +185,7 @@ export.MARK(dp,
             project.name = "Mancini_Cm", 
             model = cm.results$Phi.tsm.p.t, 
             replace = T, 
-            chat = 4.75)
+            chat = 5.6)
 ```
 
 Median c-hat test returned semi-acceptable results of estimated c-hat = 1.xxx, with 95%CI = ().  

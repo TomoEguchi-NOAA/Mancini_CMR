@@ -171,8 +171,9 @@ p.change.CCL <- ggplot(data=firstcap_only,
   coord_flip() +
   theme(axis.text.x = element_text(angle = 45,
                                    vjust = 0.5)) + 
-  labs(title="Change in size distribution of green turtles (first captures)", 
-       x="CCL (cm)", y = element_text())
+  labs(title="Change in size distribution of green turtles (first captures)") +
+  xlab("CCL (cm)") +
+  ylab("")
 
 if (save.fig)
   ggsave(filename = "figures/Cm_ChangeInSize.png", 
@@ -592,31 +593,41 @@ knitr::kable(mark.table.2,
 p.residents <- Cm.results$Phi.tsm.p.t$results$real$estimate[1]/Cm.results$Phi.tsm.p.t$results$real$estimate[2]
 p.residents.low <- Cm.results$Phi.tsm.p.t$results$real$lcl[1]/Cm.results$Phi.tsm.p.t$results$real$lcl[2]
 p.residents.high <- Cm.results$Phi.tsm.p.t$results$real$ucl[1]/Cm.results$Phi.tsm.p.t$results$real$ucl[2]
+
 ```
 
 The estimated survival rate of the residents was ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "estimate"], 3)``` (SE = ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "se"], 3)```, 95% CI = [```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "lcl"], 3)```, ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "ucl"], 3)```]). Using the estimated two survival rates, the proportion of residents in the aggregation was computed to be ```r signif(p.residents, 3)``` (95% CI = ```r signif(p.residents.low, 3)``` - ```r signif(p.residents.high, 3)```). 
 
-Abundance was computed from the estimated capture probability and the number of captured turtles per season using the Horvitz-Thompson estimator. 
+Abundance was computed from the estimated capture probability and the number of captured turtles per season using the Horvitz-Thompson estimator. According to the paper by Groom et al. (2017; Estimating long-term trends in abundance and survival for nesting flatback turtles in Kakadu National Park, Australia. Endangered Species Research 32:203-211), the SE of Nhat from Horvitz-Thompson estimator is sqrt{(n/p_i)^2 (var(p_i)/p_i^2)}. 
+
+The estimated proportion of residents is not included in the abundance estimates here. So, the abundance includes transients. 
 
 ```{r Nhats, echo=FALSE, include=F, cache=T}
 phats <- Cm.results$Phi.tsm.p.t$results$real[3:nrow(Cm.results$Phi.tsm.p.t$results$real), 
-                                             c("estimate", "lcl", "ucl")]
+                                             c("estimate", "se", "lcl", "ucl")]
 phats$season <- colnames(data.0)[2:(ncol(data.0))]
 
 n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
 Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * p.residents,
-                       lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-                       ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents)
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = Nhat)) +
-  geom_errorbar(aes(x = season, ymin = lcl, ymax = ucl)) +
+  geom_errorbar(aes(x = season, ymin = lcl2, ymax = ucl)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   ylab("Abundance (95% CI)")
 
 if (save.fig)
-  ggsave(plot = p.Nhats, filename = "figures/Cm_Nhats.png",
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats.png",
          device = "png", dpi = 600)
 
 ```
@@ -627,4 +638,53 @@ knitr::include_graphics(paste0("figures/Cm_Nhats.png"))
 ```
 
 
+To estimate the long-term population trend and possible deviation from a long-term trend, we fitted a population growth model to the Horvitz-Thompson estimates.  
+
+The time step is not one year. So, we need to make sure that's taken care of. 
+
+```{r}
+Nhats.df %>% 
+  mutate(time = cumsum(CJS.data$delta.dates) - CJS.data$delta.dates[1]) -> Nhats.df
+pop.growth <- lm(log(Nhat) ~ time, data = Nhats.df)
+summary(pop.growth)
+```
+
+We can also fit a simple logistic growth model to these estimates.
+
+N(t+1) = N(t) + rN(t)[(K - N(t))/K].
+
+```{r}
+data.frame(Nt1 = Nhats.df$Nhat[2:nrow(Nhats.df)],
+           Nt = Nhats.df$Nhat[1:(nrow(Nhats.df)-1)],
+           time = Nhats.df$time[1:(nrow(Nhats.df)-1)],
+           dt = Nhats.df$time[2:(nrow(Nhats.df))] - Nhats.df$time[1:(nrow(Nhats.df)-1)]) %>%
+  mutate(dN = Nt1 - Nt,
+         dNdt = dN/dt) -> logistic.df
+
+logistic.fit <- nls(dNdt ~ r * Nt * ((K - Nt)/K), 
+                    data = logistic.df,
+                    start = list(r = 0.18, K = 25000))
+
+summary(logistic.fit)
+```
+
+
+```{r}
+logistic.fit.summary <- summary(logistic.fit)
+logistic.df %>%
+  mutate(Nt1hat = Nt + logistic.fit.summary$coefficients[1,1] * 
+           Nt * ((logistic.fit.summary$coefficients[2,1] - Nt)/logistic.fit.summary$coefficients[2,1])) -> logistic.df.1
+
+#logistic.df$predict <- predict(logistic.fit)
+
+ggplot(data = logistic.df.1) +
+  geom_path(aes(x = time,
+                 y = Nt1),
+             color = "red") + 
+  geom_path(aes(x = time,
+                 y = Nt1hat))
+
+```
+
+I decided to run the best model using JAGS. See Cm_CJS_phiTSM_pt_JAGS.Rmd.
 

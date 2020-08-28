@@ -32,7 +32,7 @@ model {
   mu_N[1] <- log(n[1]/p[1])
   logN[1] <- log(N[1])
   logN[1] ~ dlnorm(mu_N[1], tau_N)
-  N[1] ~ dnorm(n[1]/p[1], 0.01) T(0,) 
+  N[1] ~ dnorm(n[1], 0.001) T(0,) 
 
   for (t in 2:T){
      p[t] ~ dbeta(5, 2) 

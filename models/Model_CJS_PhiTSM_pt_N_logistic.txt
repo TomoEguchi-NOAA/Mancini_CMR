@@ -30,18 +30,20 @@ model {
   p[1] ~ dbeta(5, 2)
   n[1] ~ dbin(p[1], N[1])
   mu_N[1] <- log(n[1]/p[1])
-  log(N[1]) ~ dlnorm(mu_N[1], tau_N)
+  logN[1] <- log(N[1])
+  logN[1] ~ dlnorm(mu_N[1], tau_N)
   
 
   for (t in 2:T){
      p[t] ~ dbeta(5, 2) 
      n[t] ~ dbin(p[t], N[t])
-     log(N[t]) ~ dlnorm(mu_N[t], tau_N)
+     logN[t] <- log(N[t])
+     logN[t] ~ dlnorm(mu_N[t], tau_N)
      exp(mu_N[t]) <- exp(mu_N[t-1]) + r * exp(mu_N[t-1]) * ((K - exp(mu_N[t-1]))/K)  
   }
   
   tau_N ~ dgamma(0.1, 5)
-  SD_N <- sqrt(1/tau_N)
+  sigma_N <- sqrt(1/tau_N)
 
   for (u in 1:2){
      gamma[u] ~ dbeta(5, 2)

@@ -358,7 +358,11 @@ Capture history data were pooled by sampling seasons (summer and winter). Conseq
 I considered several possible models for this analysis. For survival rates, they were treated as either constant, affected by transients (time-since-marking; TSM), a function of age class (immature < 81.6 cm CCL) or a function of size (CCL).  For capture probabilities, they were treated as either constant, time dependent, different between the first and subsequent captures (trap response), or a function of effort. A total of 14 models were fitted to the data (Table 1).
 
 ```{r model_defs, echo=F, include=T}
-knitr::kable(mark.table %>% select(ID, Phi, p, model) %>% arrange(by = as.numeric(ID)), 
+tmp <- gsub("(", "[", mark.table$model, fixed = T)
+tmp <- gsub(")", "]", tmp, fixed = T)
+mark.table$Model <- tmp
+
+knitr::kable(mark.table %>% select(ID, Phi, p, Model) %>% arrange(by = as.numeric(ID)), 
              digits = 2,
              caption = "Table 1. Definitions of 14 CJS models fitted to CMR data of green turtles. ",
              table.attr = "style='width:30%;'")
@@ -585,7 +589,11 @@ There were some violations of assumptions at some capture occasions but many pas
 The comparison of the models showed that one with transients effect on survival (phi(TSM)) and time-dependent capture probability (p(time)) was the best. 
 
 ```{r table_model_comparison, echo=FALSE, include=TRUE}
-knitr::kable(mark.table.2, 
+tmp <- gsub("(", "[", mark.table.2$model, fixed = T)
+tmp <- gsub(")", "]", tmp, fixed = T)
+mark.table.2$Model <- tmp
+
+knitr::kable(mark.table.2 %>% select(ID, Model, DeltaAICc), 
              digits = 2,
              caption = "Table 6. A comparison of 14 CJS models fitted to CMR data of green turtles. ",
              table.attr = "style='width:30%;'")

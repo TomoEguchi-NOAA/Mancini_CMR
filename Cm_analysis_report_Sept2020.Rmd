@@ -582,7 +582,7 @@ df_new <- overall_CJS(as.matrix(data.0),
 
 ```
 
-Estimated chat was ```r signif(c_hat, digits = 3)```. The overall GOF p value was ```r 1 - pchisq(stat_new, df_new)```, which is significant at alpha = 0.05 but not at 0.01... The c-hat value is not a great value, I've seen a lot worse... so, I'm going to move on with this. With a Windows computer, I could export the results with the estimated c-hat value and run the median c-hat analysis... but is it necessary? 
+Estimated c-hat was ```r signif(c_hat, digits = 3)```. The overall GOF p value was ```r 1 - pchisq(stat_new, df_new)```, which is significant at alpha = 0.05 but not at 0.01... The c-hat value is not a great value, I've seen a lot worse... so, I'm going to move on with this. With a Windows computer, I could export the results with the estimated c-hat value and run the median c-hat analysis... but is it necessary? 
 
 There were some violations of assumptions at some capture occasions but many passed the tests. 
 
@@ -595,6 +595,7 @@ mark.table.2$Model <- tmp
 
 knitr::kable(mark.table.2 %>% select(ID, Model, DeltaAICc), 
              digits = 2,
+             col.names = c("ID", "Model", "$\\Delta$AIC~c~"),
              caption = "Table 6. A comparison of 14 CJS models fitted to CMR data of green turtles. ",
              table.attr = "style='width:30%;'")
 ```
@@ -656,6 +657,8 @@ Logistic model: dN/dt = rN(k - N)/K
 
 I used the Bayesian approach to estimate r and K. Both models converged according to the Rhat statistic. 
 
+##### Exponential model
+
 ```{r exp_fit, echo=FALSE, include=F, cache=T}
 Nhats.df %>% 
   mutate(time = cumsum(CJS.data$delta.dates) - CJS.data$delta.dates[1]) -> Nhats.df
@@ -713,9 +716,9 @@ loo.out.jm.exp <- compute.LOOIC(loglik = jm.exp$sims.list$loglik,
 # lm.summary <- summary(pop.growth)
 ```
 
-There were ```r sum(loo.out.jm.exp$loo.out$diagnostics$pareto_k>0.7)``` data points that indicated high Pareto-k statistics (lack of fit). 
+There were ```r sum(loo.out.jm.exp$loo.out$diagnostics$pareto_k>0.7)``` data points that indicated high Pareto-k statistics (>0.7; lack of fit). 
 
-The mean estimated r for the exponential model was ```r signif(jm.exp$mean$r, 3)``` (SE = ```r signif(jm.exp$sd$r, 3)```). The growth appeared to be faster than estimated in the early years and it appeared to plateau in the recent years (Figure 6). The deviation from the fitted growth function was also seen in the residual plot (Figure 7).
+The mean estimated r for the exponential model was ```r signif(jm.exp$mean$r, 3)``` (SE = ```r format(signif(jm.exp$sd$r, 3), scientific = F)```). The growth appeared to be faster than estimated in the early years and it appeared to plateau in the recent years (Figure 6). The deviation from the fitted growth function was also seen in the residual plot (Figure 7).
 
 ```{r plot_exp, echo=FALSE, include=F, cache=T}
 jm.exp$summary %>% data.frame() %>%
@@ -772,6 +775,8 @@ knitr::include_graphics(paste0("figures/Cm_residuals_exp.png"))
 
 ```
 
+##### Logistic model
+
 The logistic model incorporates the carrying capacity to the exponential model. 
 
 
@@ -820,7 +825,6 @@ loo.out.jm.logistic <- compute.LOOIC(loglik = jm.logistic$sims.list$loglik,
 #jm.logistic$summary
 ```
 
-Similarly to the exponential model, ```r sum(loo.out.jm.logistic$loo.out$diagnostics$pareto_k > 0.7)``` data points indicated high Pareto-K statistic (> 0.7) indicating lack of fit. 
 
 
 ```{r plot_logistic, echo=F, include=F, cache=T}
@@ -846,10 +850,12 @@ if (save.fig)
          device = "png", dpi = 600)
 ```
 
-```{r plot_logistic_Nhats, echo=F, include=F, fig.cap="Figure 8. The fitted logistic model to estimated abundance of green turtles"}
+```{r plot_logistic_Nhats, echo=F, fig.cap="Figure 8. The fitted logistic model to estimated abundance of green turtles"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_logistic.png"))
 
 ```
+
+Similarly to the exponential model, ```r sum(loo.out.jm.logistic$loo.out$diagnostics$pareto_k > 0.7)``` data points indicated high Pareto-K statistic (> 0.7) indicating lack of fit. 
 
 
 ```{r residuals_logistic, echo=F, include=F}
@@ -877,11 +883,11 @@ knitr::include_graphics(paste0("figures/Cm_residuals_logistic.png"))
 
 ```
 
-When the fit of these two models were compared, the deviance information criteria (DIC) and leave-one-out informatoin criteria (LOOIC) indicated that the logistic model was better than the exponential model (delta DIC = ```r jm.exp$DIC - jm.logistic$DIC```, deltaLOOIC = ```r loo.out.jm.exp$loo.out$estimates["looic", "Estimate"] - loo.out.jm.logistic$loo.out$estimates["looic", "Estimate"]```).
+When the fit of these two models were compared, the deviance information criteria (DIC) and leave-one-out informatoin criteria (LOOIC) indicated that the logistic model was better than the exponential model ($\Delta$DIC = ```r signif(jm.exp$DIC - jm.logistic$DIC, 5)```, $\Delta$LOOIC = ```r signif(loo.out.jm.exp$loo.out$estimates["looic", "Estimate"] - loo.out.jm.logistic$loo.out$estimates["looic", "Estimate"], 6)```).
 
 A close look at Pareto-K statistic indicated that the recent estimates had large values (Figures 7 and 9) for the two models. In the following I use the results of the logistic model as it was considered a better model based on DIC and LOOIC values.  
 
-K is quite large (mean = ```r format(signif(jm.logistic$mean$K, 6), scientific = F)```, SE = ```r signif(jm.logistic$sd$K, 3)```) and the estimated r (mean = ```r signif(jm.logistic$mean$r, 3)```, SE = ```r format(signif(jm.logistic$sd$r, 3), scientific = F)```) was much greater than what was found from the exponential model (mean = ```r signif(jm.exp$mean$r, 3)```, SE = ```r format(signif(jm.exp$sd$r, 3), scientific=F)```). 
+K is quite large (mean = ```r format(signif(jm.logistic$mean$K, 6), scientific = F)```, SE = ```r format(signif(jm.logistic$sd$K, 3), scientific = F)```) and the estimated r (mean = ```r signif(jm.logistic$mean$r, 3)```, SE = ```r format(signif(jm.logistic$sd$r, 3), scientific = F)```) was much greater than what was found from the exponential model (mean = ```r signif(jm.exp$mean$r, 3)```, SE = ```r format(signif(jm.exp$sd$r, 3), scientific=F)```). 
 
 ```{r summary_logistic, echo=F, include=T}
 p.posteriors_K_r <- mcmc_dens(jm.logistic$samples, c("K", "r"))

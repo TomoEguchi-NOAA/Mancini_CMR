@@ -406,7 +406,7 @@ knitr::kable(test3sr.signif,
              table.attr = "style='width:30%;'")
 ```
 
-##### TES#.Sm
+##### TES3.Sm
 
 TEST3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again. "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
 
@@ -598,6 +598,7 @@ p.residents.high <- Cm.results$Phi.tsm.p.t$results$real$ucl[1]/Cm.results$Phi.ts
 
 The estimated survival rate of the residents was ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "estimate"], 3)``` (SE = ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "se"], 3)```, 95% CI = [```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "lcl"], 3)```, ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "ucl"], 3)```]). Using the estimated two survival rates, the proportion of residents in the aggregation was computed to be ```r signif(p.residents, 3)``` (95% CI = ```r signif(p.residents.low, 3)``` - ```r signif(p.residents.high, 3)```). 
 
+#### Abundance and population growth
 Abundance was computed from the estimated capture probability and the number of captured turtles per season using the Horvitz-Thompson estimator. According to the paper by Groom et al. (2017; Estimating long-term trends in abundance and survival for nesting flatback turtles in Kakadu National Park, Australia. Endangered Species Research 32:203-211), the SE of Nhat from Horvitz-Thompson estimator is sqrt{(n/p_i)^2 (var(p_i)/p_i^2)}. 
 
 The estimated proportion of residents is not included in the abundance estimates here. So, the abundance includes transients. 
@@ -633,58 +634,207 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles"}
+```{r plot_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats.png"))
 ```
 
+To estimate the long-term population trend and possible deviation from a long-term trend, I fitted population growth models to the Horvitz-Thompson estimates. I considered the exponential and logistic models.
 
-To estimate the long-term population trend and possible deviation from a long-term trend, we fitted a population growth model to the Horvitz-Thompson estimates.  
+Exponential model: Nt = N0 exp(rt)
 
-The time step is not one year. So, we need to make sure that's taken care of. 
+Logistic model: dN/dt = rN(k - N)/K
 
-```{r}
+I used the Bayesian approach to estimate r and K. Both models converged according to the Rhat statistic. 
+
+```{r Nhats_exp, echo=FALSE, include=F, cache=T}
 Nhats.df %>% 
   mutate(time = cumsum(CJS.data$delta.dates) - CJS.data$delta.dates[1]) -> Nhats.df
-pop.growth <- lm(log(Nhat) ~ time, data = Nhats.df)
-summary(pop.growth)
+
+jags.data <- list(N = Nhats.df$Nhat,
+                  time = Nhats.df$time,
+                  length_t = nrow(Nhats.df),
+                  mu_N1 = 1000)
+
+MCMC.params <- list(n.samples = 50000,
+                    n.burnin = 30000,
+                    n.thin = 5,
+                    n.chains = 5,
+                    model.file = "models/Model_exponential.txt")
+
+parameters <- c("mu_N", "r", "sd_N", "deviance", "DIC", "loglik")
+
+jm.exp <- jags(data = jags.data,
+                    parameters.to.save= parameters,
+                    model.file = MCMC.params$model.file,
+                    n.chains = MCMC.params$n.chains,
+                    n.burnin = MCMC.params$n.burnin,
+                    n.thin = MCMC.params$n.thin,
+                    n.iter = MCMC.params$n.samples,
+                    DIC = T, 
+                    parallel=T)
+
+n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
+
+data.vector <- as.vector(jags.data$jags.data$N) %>% 
+  rep(each = MCMC.params$n.chains * n.per.chain)
+
+# START HERE ON 2020-09-04 - LOGLIK IS NOT THE RIGHT FORMAT TO COMPUTE LOOIC
+
+loo.out.jm.exp <- compute.LOOIC(loglik = jm.exp$sims.list$loglik, 
+                                data.vector = data.vector, 
+                                MCMC.params = MCMC.params)
+
+# jm.linear$summary
+# pop.growth <- lm(log(Nhat) ~ time, data = Nhats.df)
+# lm.summary <- summary(pop.growth)
 ```
 
-We can also fit a simple logistic growth model to these estimates.
+The mean estimated r for the exponential model was ```r signif(jm.exp$mean$r, 3)``` (SE = ```r signif(jm.exp$sd$r, 3)```). The growth appeared to be faster than estimated in the early years and it appeared to plateau in the recent years (Figure 6). The deviation from the fitted growth function was also seen in the residual plot (Figure 7).
 
-N(t+1) = N(t) + rN(t)[(K - N(t))/K].
+```{r plot_exp, echo=FALSE, include=F, cache=T}
+jm.exp$summary %>% data.frame() %>%
+  rownames_to_column(var = "Parameter") -> jm.exp.df
 
-```{r}
-data.frame(Nt1 = Nhats.df$Nhat[2:nrow(Nhats.df)],
-           Nt = Nhats.df$Nhat[1:(nrow(Nhats.df)-1)],
-           time = Nhats.df$time[1:(nrow(Nhats.df)-1)],
-           dt = Nhats.df$time[2:(nrow(Nhats.df))] - Nhats.df$time[1:(nrow(Nhats.df)-1)]) %>%
-  mutate(dN = Nt1 - Nt,
-         dNdt = dN/dt) -> logistic.df
+exp.r <- filter(jm.exp.df, str_detect(Parameter, "r"))
+jm.exp.df %>% filter(str_detect(Parameter, "mu_N")) -> exp.mu_N.df
 
-logistic.fit <- nls(dNdt ~ r * Nt * ((K - Nt)/K), 
-                    data = logistic.df,
-                    start = list(r = 0.18, K = 25000))
+Nhats.df %>% mutate(N.predict = exp.mu_N.df$mean[1] * exp(exp.r$mean[1] * time)) -> Nhats2.df
 
-summary(logistic.fit)
-```
+p.exp.fit <- ggplot(data = Nhats2.df) +
+  geom_path(aes(x = time, y = Nhat),
+            color = "blue") +
+  geom_path(aes(x = time, y = N.predict),
+            color = "orange")
 
-
-```{r}
-logistic.fit.summary <- summary(logistic.fit)
-logistic.df %>%
-  mutate(Nt1hat = Nt + logistic.fit.summary$coefficients[1,1] * 
-           Nt * ((logistic.fit.summary$coefficients[2,1] - Nt)/logistic.fit.summary$coefficients[2,1])) -> logistic.df.1
-
-#logistic.df$predict <- predict(logistic.fit)
-
-ggplot(data = logistic.df.1) +
-  geom_path(aes(x = time,
-                 y = Nt1),
-             color = "red") + 
-  geom_path(aes(x = time,
-                 y = Nt1hat))
+#p.exp.fit
+if (save.fig)
+  ggsave(plot = p.exp.fit, 
+         filename = "figures/Cm_Nhats_exp.png",
+         device = "png", dpi = 600)
 
 ```
 
-I decided to run the best model using JAGS. See Cm_CJS_phiTSM_pt_JAGS.Rmd.
+
+```{r plot_linear_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 6. The fitted exponential model to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_exp.png"))
+
+```
+
+```{r residuals_linear, echo=FALSE, include=F, cache=T}
+Nhats2.df %>% mutate(residual = Nhat - N.predict) -> Nhats2.df
+
+p.residual.exp <- ggplot(data = Nhats2.df) + 
+  geom_point(aes(x = time, y = residual))
+
+#p.residual.exp
+if (save.fig)
+  ggsave(plot = p.residual.exp, 
+         filename = "figures/Cm_residuals_exp.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_linear_residuals, echo=FALSE, cache=TRUE, fig.cap="Figure 7. Residuals of the exponential model fitted to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_residuals_exp.png"))
+
+```
+
+The logistic model incorporates the carrying capacity to the exponential model. 
+
+
+```{r logistic_fit, echo=FALSE, include=F, cache=T}
+
+jags.data <- list(N = Nhats.df$Nhat,
+                  time = Nhats.df$time,
+                  length_t = nrow(Nhats.df),
+                  K0 = 25000,
+                  mu_N1 = 1000)
+
+
+MCMC.params <- list(n.samples = 50000,
+                    n.burnin = 30000,
+                    n.thin = 5,
+                    n.chains = 5,
+                    model.file = "models/Model_continuous_time_logistic.txt")
+
+parameters <- c("mu_N", "r", "K", "sd_N", "deviance", "DIC", "loglik")
+
+jm.logistic <- jags(data = jags.data,
+                    parameters.to.save= parameters,
+                    model.file = MCMC.params$model.file,
+                    n.chains = MCMC.params$n.chains,
+                    n.burnin = MCMC.params$n.burnin,
+                    n.thin = MCMC.params$n.thin,
+                    n.iter = MCMC.params$n.samples,
+                    DIC = T, 
+                    parallel=T)
+
+#jm.logistic$summary
+```
+
+When the fit of these two models were compared, the deviance information criteria (DIC) indicated that the logistic model was better than the exponential model (delta DIC = ```r jm.exp$DIC - jm.logistic$DIC```). 
+
+Trace plots look okay:
+
+```{r trace_plot_logistic, echo=FALSE, include=T, cache=T}
+mcmc_trace(jm.logistic$samples, c("K", "r", "sd_N"))
+```
+
+Compare
+
+Summary of K and r are here:
+
+```{r summary_logistic, echo=F, include=T}
+jm.logistic$summary %>% data.frame() %>%
+  rownames_to_column(var = "Parameter")  -> jm.out.df
+
+post_K <- jm.out.df %>% filter(str_detect(Parameter, "K"))
+post_r <- jm.out.df %>% filter(str_detect(Parameter, "r"))
+
+mcmc_dens(jm.logistic$samples, c("K", "r"))
+```
+
+The logistic model was considered better than the exponential model based on the DIC, where 
+
+K is quite large (mean = ```r format(signif(jm.logistic$mean$K, 6), scientific = F)```, SE = ```r signif(jm.logistic$sd$K, 3)```) and the estimated r (mean = ```r signif(jm.logistic$mean$r, 3)```, SE = ```r format(signif(jm.logistic$sd$r, 3), scientific = F)```) is much greater than what was found from the exponential model (mean = ```r signif(jm.exp$mean$r, 3)```, SE = ```r format(signif(jm.exp$sd$r, 3), scientific=F)```). 
+
+
+```{r plot_logistic, echo=F, include=F}
+sd_N <- jm.out.df %>% filter(str_detect(Parameter, "sd_N"))
+
+jm.out.df %>% filter(str_detect(Parameter, "mu_N")) %>% # -> jm.out.muN.df # 
+  mutate(time = Nhats.df$time[2:nrow(Nhats.df)],
+         Nlow = mean - 1.96 * sd_N$mean,
+         Nhigh = mean + 1.96 * sd_N$mean) -> jm.out.muN.df
+
+p.logistic.fit <- ggplot() + 
+  geom_path(data = Nhats.df,
+            aes(x = time, y = Nhat),
+            color = "darkblue") + 
+  geom_path(data = jm.out.muN.df,
+            aes(x = time, y = mean),
+            color = "orange") + 
+  # geom_point(data = jm.out.muN.df,
+  #           aes(x = time, y = mean)) +
+  geom_ribbon(data = jm.out.muN.df,
+              aes(x = time,
+                  ymin = X2.5., 
+                  ymax = X97.5.),
+              fill = "orange",
+              alpha = 0.6)
+
+if (save.fig)
+  ggsave(plot = p.logistic.fit, 
+         filename = "figures/Cm_Nhats_logistic.png",
+         device = "png", dpi = 600)
+
+```
+
+```{r plot_Nhats_logistic, echo=FALSE, cache=TRUE, fig.cap="Figure 8. Logistic model fitted to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_logistic.png"))
+
+```
+
+
 

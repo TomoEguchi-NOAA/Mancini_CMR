@@ -27,7 +27,7 @@ source("Mancini_functions.R")
 
 This document summarizes preliminary analyses of capture-recapture data for green turtles.  The data were used to investigate somatic growth patterns and to estimate survival rates and abundance.  Growths patterns of green turtles were determined by fitting the von Bertalanffy function to repeated measurements of CCL.  To estimate survival and abundance, the Cormack-Jolly-Seber capture-mark-recapture (CJS CMR) model was fitted to the capture-recapture histories. In the following, I will summarize the preliminary results of the analyses.  
 
-All statistical analyses were conducted using the R statistical environment (v. 3.6.1, R Development Team).
+All statistical analyses were conducted using the R statistical environment (v. ```r paste0(R.version$major, ".", R.version$minor)```, R Development Team).
 
 # Somatic growth
 ## Methods
@@ -90,16 +90,16 @@ data.CCL  %>% left_join(data.CJS, by = "ID") %>%
 
 jags.data <- vonBert.jags.data(dat.1.Cm, "Cm")
 
-jm.RLinf_Rk.Cm <- readRDS("RData/Rlinf_Rk_Cm.rds")
-jm.RLinf_Fk.Cm <- readRDS("RData/Rlinf_Fk_Cm.rds")
-jm.FLinf_Rk.Cm <- readRDS("RData/Flinf_Rk_Cm.rds")
-jm.FLinf_Fk.Cm <- readRDS("RData/Flinf_Fk_Cm.rds")
+jm.RLinf_Rk.Cm <- readRDS("RData/Rlinf_Rk_Cm_Aug2020.rds")
+jm.RLinf_Fk.Cm <- readRDS("RData/Rlinf_Fk_Cm_Aug2020.rds")
+jm.FLinf_Rk.Cm <- readRDS("RData/Flinf_Rk_Cm_Aug2020.rds")
+jm.FLinf_Fk.Cm <- readRDS("RData/Flinf_Fk_Cm_Aug2020.rds")
 
 
-LOOIC.RLinf_Rk.Cm <- readRDS("RData/LOO_Rlinf_Rk_Cm.rds")
-LOOIC.RLinf_Fk.Cm <- readRDS("RData/LOO_Rlinf_Fk_Cm.rds")
-LOOIC.FLinf_Rk.Cm <- readRDS("RData/LOO_Flinf_Rk_Cm.rds")
-LOOIC.FLinf_Fk.Cm <- readRDS("RData/LOO_Flinf_Fk_Cm.rds")
+LOOIC.RLinf_Rk.Cm <- readRDS("RData/LOO_Rlinf_Rk_Cm_Aug2020.rds")
+LOOIC.RLinf_Fk.Cm <- readRDS("RData/LOO_Rlinf_Fk_Cm_Aug2020.rds")
+LOOIC.FLinf_Rk.Cm <- readRDS("RData/LOO_Flinf_Rk_Cm_Aug2020.rds")
+LOOIC.FLinf_Fk.Cm <- readRDS("RData/LOO_Flinf_Fk_Cm_Aug2020.rds")
 
 LOOIC.DIC.Cm <- data.frame(model = c("RLinf_Rk", "RLinf_Fk", "FLinf_Rk", "FLinf_Fk"),
                            LOOIC = c(LOOIC.RLinf_Rk.Cm$loo.out$estimates["looic", "Estimate"],
@@ -171,8 +171,9 @@ p.change.CCL <- ggplot(data=firstcap_only,
   coord_flip() +
   theme(axis.text.x = element_text(angle = 45,
                                    vjust = 0.5)) + 
-  labs(title="Change in size distribution of green turtles (first captures)", 
-       x="CCL (cm)", y = element_text())
+  labs(title="Change in size distribution of green turtles (first captures)") +
+  xlab("CCL (cm)") +
+  ylab("")
 
 if (save.fig)
   ggsave(filename = "figures/Cm_ChangeInSize.png", 
@@ -229,7 +230,8 @@ p.size.by.season <- ggplot(data = dat.1.Cm.CCL) +
   ylab("CCL (cm)")
 
 if (save.fig)
-  ggsave(plot = p.size.by.season, filename = "figures/Cm_SizeBySeason.png",
+  ggsave(plot = p.size.by.season, 
+         filename = "figures/Cm_SizeBySeason.png",
          device = "png", dpi = 600)
 ```
 
@@ -319,28 +321,33 @@ The basic model can be extended to accommodate various modifications, such as ti
 ### Methods
 
 ```{r CMR_data, include=FALSE, echo=FALSE, cache=T}
-dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+CJS.data <- readRDS(file = "RData/CJS_Cm_RMark_input.rds")
+# dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+# #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+# 
+# #dat.1 %>% filter(species == "Cm") -> dat.1.Cm
+# CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
+# 
+# CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
 
-dat.1 %>% filter(species == "Cm") -> dat.1.Cm
-CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
-
-CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
-
+data.CJS <- CJS.data$CH.1
 # Use CCL as a covariate as only three were missed (these may be recaptures also).
-dat.1.Cm %>% select(ID, CCL) %>% group_by(ID) %>%
-  summarise(min_CCL = min(CCL, na.rm = T)) %>%
-  filter(!is.infinite(min_CCL)) -> data.CCL
+# dat.1.Cm %>% select(ID, CCL) %>% group_by(ID) %>%
+#   summarise(min_CCL = min(CCL, na.rm = T)) %>%
+#   filter(!is.infinite(min_CCL)) -> data.CCL
 
-dat.1.Cm %>% select(season, "DATE") %>% 
-  group_by(season) %>% #-> tmp3
-  summarise(effort = n_distinct(DATE)) -> effort.season
-  
-dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
-data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
-  select(-min_CCL) -> dat.2.CCL
+# dat.1.Cm %>% select(season, "DATE") %>% 
+#   group_by(season) %>% #-> tmp3
+#   summarise(effort = n_distinct(DATE)) -> effort.season
 
-cm.results <- readRDS(file = "RData/CJS_Cm_RMark.rds")
-mark.table <- model.table(cm.results) %>% rownames_to_column(var = "ID")
+effort.season <- CJS.data$effort
+
+# dat.1.CCL <- dat2CJS_covCCL(dat.1.Cm)
+# data.CCL %>% left_join(dat.1.CCL, by = "ID") %>%
+#   select(-min_CCL) -> dat.2.CCL
+
+Cm.results <- readRDS(file = "RData/CJS_Cm_RMark.rds")
+mark.table <- model.table(Cm.results) %>% rownames_to_column(var = "ID")
 
 mark.table %>% select(ID, model, DeltaAICc) -> mark.table.2
 
@@ -357,13 +364,11 @@ knitr::kable(mark.table %>% select(ID, Phi, p, model) %>% arrange(by = as.numeri
              table.attr = "style='width:30%;'")
 ```
 
-Analyses were conducted using the maximum likelihood approach using Mark (White and Cooch Yr) through RMark (v.2.2.7, Laake 2013) in R Statistical environment (v.4.0.2, R Core Team). 
+Analyses were conducted using the maximum likelihood approach using Mark (White and Cooch Yr) through RMark (v. ```r packageVersion("RMark")```, Laake 2013). 
 
 ### Results
 
-After grouping capture records within each season, capture histories from ```r ncol(data.CJS)``` seasons (occasions) were used in the analysis. The number of capture events within each season ranged from ```r min(effort.season$effort)``` to ```r max(effort.season$effort)```, whereas the number of turtles caught per season ranged from ```r min(colSums(CJS.data$data))``` to ```r max(colSums(CJS.data$data))```.   
-
-There were ```r nrow(data.CJS)``` individuals in the capture records, where the maximum number of captures per individual was ```r max(rowSums(CJS.data$data))```.   
+There were ```r nrow(CJS.data$CJS.data$data)``` individuals in the capture records. After grouping capture records within each season, capture histories from ```r ncol(data.CJS)``` seasons (occasions) were used in the analysis. The number of capture events within each season ranged from ```r min(CJS.data$effort$effort)``` to ```r max(CJS.data$effort$effort)```, whereas the number of turtles caught per season ranged from ```r min(colSums(CJS.data$CJS.data$data))``` to ```r max(colSums(CJS.data$CJS.data$data))```.   
 
 For this report, I use results from Mark because Bayesian analysis is taking a lot of time due to the large dataset.  Goodness-of-fit has been conducted and, although some questions remain as to the CJS model may not be perfect, in general, it is accepted.  
 
@@ -373,7 +378,7 @@ For this report, I use results from Mark because Bayesian analysis is taking a l
 library(R2ucare)
 
 # using R2ucare::group_data to combine CHs
-CH.Ucare <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
+CH.Ucare <- CJS.data$CH.R2ucare
 
 # Need to do some GOF testing here.
 # TEST3.SR tests the hypothesis that there is no difference among previously and newly marked
@@ -386,10 +391,13 @@ test3sr_Cm <- test3sr(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]),
 test3sr.details <- test3sr_Cm$details
 
 test3sr.signif <- filter(test3sr.details, p_val < 0.05)
+test3sr.signif.01 <- filter(test3sr.details, p_val < 0.01)
 ```
 
+##### TEST3.SR
 TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." 
 
+There were ```r nrow(test3sr.signif)``` occasions that were flagged by this statistic (Table 2). Note that if we decrease the alpha level to 0.01, ```r nrow(test3sr.signif.01)``` occasions would be flagged. (I know this is not the correct way to do a statistical analysis but just pointing out the somewhat arbitrary nature of the significance tests.)
 
 ```{r table_test3sr, echo=F, include=T}
 knitr::kable(test3sr.signif, 
@@ -399,7 +407,9 @@ knitr::kable(test3sr.signif,
              table.attr = "style='width:30%;'")
 ```
 
-TEST3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again.  "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
+##### TES3.Sm
+
+TEST3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again. "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
 
 ```{r test3.sm, echo=F, include=F, cache=T}
 # TEST3.Sm tests the hypothesis that there is no difference in the expected
@@ -421,60 +431,74 @@ knitr::kable(test3sm.signif,
              table.attr = "style='width:30%;'")
 ```
 
+According to Test3.sm, ```r nrow(test3sm.signif)``` occasions were significantly different from the null hypothesis. I looked into time between captures of  the individuals that were caught at these ```r nrow(test3sm.signif)``` occasions and caught at least once more. 
+
 To make a comparison, I look at an occasion that passed the test:
 
 ```{r test3m_passed, echo=F, include=F}
-# first filter rows with 1s on the 25th column
-data.25 <- filter(CJS.data$data, CJS.data$data[, 25] > 0) #%>%
-# then look at recaptures since the 25th occasion
-data.25 <- data.25[, 25:ncol(data.25)]
+data.0 <- CJS.data$CJS.data$data
+
+# cumulative sum of captures per individual:
+cumulative.capture <- t(apply(data.0, FUN = cumsum, MARGIN = 1))
+
+# first filter rows with 1s on the 25th column (one example of not significant)
+# those that were caught first time at the 25th occasion
+idx <- 25
+data.25.first <- data.0[(cumulative.capture[,(idx-1)] == 0 & cumulative.capture[, idx] == 1), idx:ncol(data.0)]
+
+# those that were caught before and at the 25th occasion
+data.25.recap <- data.0[(cumulative.capture[, (idx-1)] > 0 & data.0[,idx] == 1), idx:ncol(data.0)] #%>%
 
 # look at the recaptures, given they were caught on the 25th occasion. 
-data.25.3sm <- data.25[, c(2:ncol(data.25))]
-rowSums.25<- rowSums(data.25.3sm)
+#data.25.3sm.recap <- data.25[, c(2:ncol(data.25))]
+rowSums.25.recap<- rowSums(data.25.recap)
+rowSums.25.first <- rowSums(data.25.first)
+
 ```
 
+The maximum number of recaptures for those that were caught first time at the 25th occasion was ```r max(rowSums.25.first)``` whereas that for those turtles that were caught before the 25th and at the 25th occasions was ```r max(rowSums.25.recap)```. 
 
-Then look at what happened in those occasions (4, 7, 36). 
+Then look at what happened in those occasions (4, 7, 37). 
 
 ```{r test3m_failed, echo=F, include=F}
-# first filter rows with 1s on the 4th column
-data.4 <- filter(CJS.data$data, CJS.data$data[, 4] > 0) #%>%
-# then look at recaptures since the 4th occasion
-data.4 <- data.4[, 4:ncol(data.4)]
+# those that were caught first time at the 4th occasion
+idx <- 4
+data.4.first <- data.0[(cumulative.capture[,(idx-1)] == 0 & cumulative.capture[, idx] == 1), idx:ncol(data.0)]
+
+# those that were caught before and at the 4th occasion
+data.4.recap <- data.0[(cumulative.capture[, (idx-1)] > 0 & data.0[,idx] == 1), idx:ncol(data.0)] #%>%
 
 # look at the recaptures, given they were caught on the 4th occasion. 
-data.4.3sm <- data.4[, c(2:ncol(data.4))]
-rowSums.4 <- rowSums(data.4.3sm)
+rowSums.4.recap<- rowSums(data.4.recap)
+rowSums.4.first <- rowSums(data.4.first)
 
-# first filter rows with 1s on the 7th column
-data.7 <- filter(CJS.data$data, CJS.data$data[, 7] > 0) #%>%
-# then look at recaptures since the 7th occasion
-data.7 <- data.7[, 7:ncol(data.7)]
+# those that were caught first time at the 7th occasion
+idx <- 7
+data.7.first <- data.0[(cumulative.capture[,(idx-1)] == 0 & cumulative.capture[, idx] == 1), idx:ncol(data.0)]
+
+# those that were caught before and at the 7th occasion
+data.7.recap <- data.0[(cumulative.capture[, (idx-1)] > 0 & data.0[,idx] == 1), idx:ncol(data.0)] #%>%
 
 # look at the recaptures, given they were caught on the 7th occasion. 
-data.7.3sm <- data.7[, c(2:ncol(data.7))]
-rowSums.7 <- rowSums(data.7.3sm)
+rowSums.7.recap<- rowSums(data.7.recap)
+rowSums.7.first <- rowSums(data.7.first)
 
-data.36 <- filter(CJS.data$data, CJS.data$data[, 36] > 0) #%>%
+# those that were caught first time at the 7th occasion
+idx <- 37
+data.37.first <- data.0[(cumulative.capture[,(idx-1)] == 0 & cumulative.capture[, idx] == 1), idx:ncol(data.0)]
 
-# then look at recaptures since the 7th occasion
-data.36 <- data.36[, 36:ncol(data.36)]
+# those that were caught before and at the 7th occasion
+data.37.recap <- data.0[(cumulative.capture[, (idx-1)] > 0 & data.0[,idx] == 1), idx:ncol(data.0)] #%>%
 
-# this is the second to last occasion.  
-data.36.3sm <- data.36[, c(2:ncol(data.36))]
-
-# n.caps.36.sm <- rowSums(data.36.3sm)
-rowSums.36 <- sum(data.36.3sm)
-#rowSums(data.36.3sm)
+# look at the recaptures, given they were caught on the 7th occasion. 
+rowSums.37.recap<- rowSums(data.37.recap)
+rowSums.37.first <- rowSums(data.37.first)
 
 ```
 
-I see that there are some recaptures that are unusually high - a 5 and 3.  This is probably why this occasion was flagged. 
+For the 4th occasion, the maximum number of recaptures for those that were caught first time at the 4th occasion was ```r max(rowSums.4.first)``` whereas that for those turtles that were caught before the 4th and at the 4th occasions was ```r max(rowSums.4.recap)```. For the 7th occasion,  the maximum number of recaptures for those that were caught first time at the 7th occasion was ```r max(rowSums.7.first)``` whereas that for those turtles that were caught before the 7th and at the 7th occasions was ```r max(rowSums.7.recap)```. For the 37th occasion,  the maximum number of recaptures for those that were caught first time at the 37th occasion was ```r max(rowSums.37.first)``` whereas that for those turtles that were caught before the 37th and at the 37th occasions was ```r max(rowSums.37.recap)```. I don't know why the 37th occasion was flagged... 
 
-Seems awfully a small number of captures at the 7th occasion. Of these, only 3 were recaptured more than once after it was released on the 7th occasion. It still doesn't make much sense... 
-
-Of 429 turtles caught on the 36th occasion, 11 were caught again on the 37th (final) occasion.  These are for January and August of 2019.  Not sure why statistics = 0 in these two occasions. 
+##### TEST2.CT
 
 TEST2.CT tests the hypothesis that "there is no difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions.  
 
@@ -493,12 +517,15 @@ test2ct.signif <- filter(test2ct_Cm.details, p_val < 0.05)
 ```{r table_test2ct, echo=F, include=T}
 knitr::kable(test2ct.signif, 
              digits = 2,
-             col.names = c("Occasion", "DF", "Stat", "p val", "signed test", "test"),
+             col.names = c("Occasion", "DF", "Stat", 
+                           "p val", "signed test", "test"),
              caption = "Table 4. Significant results from Test2.ct, which evaluates difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions",
              table.attr = "style='width:30%;'")
 ```
 
-There were four occasions when the test failed at alpha = 0.05; one (22) was positive and three were negative (4, 16, and 32). With alpha = 0.01, only one (16) was rejected. 
+There were four occasions when the test failed at alpha = 0.05; one (22) was positive and three were negative (4, 16, and 18). With alpha = 0.01, only one (16) was rejected. 
+
+##### TEST2.CL
 
 TEST2.CL tests if there is no difference in the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t and t + 2.  
 
@@ -523,7 +550,7 @@ knitr::kable(test2cl.signif,
              table.attr = "style='width:30%;'")
 ```
 
-There were six occasions that were flagged (alpha = 0.05), which were all positive.  Occasions 16 and 22 failed the 2ct and 2cl tests. With alpha = 0.01, two are "significant": occasions 14 and 34. 
+There were six occasions that were flagged (alpha = 0.05), which were all positive.  Occasions 16 and 22 failed the 2ct and 2cl tests. With alpha = 0.01, one was "significant": occasion 14. 
 
 
 ```{r test_overall, echo=F, include=F, warning=F}
@@ -538,19 +565,20 @@ test_all_Cm <- overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]),
 c_hat <- test_all_Cm$chi2/test_all_Cm$degree_of_freedom
 
 # using Justin's equations from Howick's data:
-stat_new <- overall_CJS(as.matrix(CJS.data$data),
-                        rep(1, nrow(CJS.data$data)))$chi2 -
-  (test3sr(as.matrix(CJS.data$data),
-           rep(1, nrow(CJS.data$data)))$test3sr[[1]])
-df_new <- overall_CJS(as.matrix(CJS.data$data),
-                      rep(1, nrow(CJS.data$data)))$degree_of_freedom -
-  (test3sr(as.matrix(CJS.data$data), rep(1, nrow(CJS.data$data)))$test3sr[[2]])
+stat_new <- overall_CJS(as.matrix(data.0),
+                        rep(1, nrow(data.0)))$chi2 -
+  (test3sr(as.matrix(data.0),
+           rep(1, nrow(data.0)))$test3sr[[1]])
+
+df_new <- overall_CJS(as.matrix(data.0),
+                      rep(1, nrow(data.0)))$degree_of_freedom -
+  (test3sr(as.matrix(data.0), rep(1, nrow(data.0)))$test3sr[[2]])
 
 #1-pchisq(stat_new, df_new)
 
 ```
 
-Estimated chat was ```r signif(c_hat, digits = 3)```. Although this is not a great value, I've seen a lot worse... so, I'm going to move on with this. With a Windows computer, I could export the results with the estimated c-hat value and run the median c-hat analysis... but is it necessary? 
+Estimated chat was ```r signif(c_hat, digits = 3)```. The overall GOF p value was ```r 1 - pchisq(stat_new, df_new)```, which is significant at alpha = 0.05 but not at 0.01... The c-hat value is not a great value, I've seen a lot worse... so, I'm going to move on with this. With a Windows computer, I could export the results with the estimated c-hat value and run the median c-hat analysis... but is it necessary? 
 
 There were some violations of assumptions at some capture occasions but many passed the tests. 
 
@@ -564,41 +592,299 @@ knitr::kable(mark.table.2,
 ```
 
 ```{r prop_res, echo=FALSE}
-p.residents <- cm.results$Phi.tsm.p.t$results$real$estimate[1]/cm.results$Phi.tsm.p.t$results$real$estimate[2]
-p.residents.low <- cm.results$Phi.tsm.p.t$results$real$lcl[1]/cm.results$Phi.tsm.p.t$results$real$lcl[2]
-p.residents.high <- cm.results$Phi.tsm.p.t$results$real$ucl[1]/cm.results$Phi.tsm.p.t$results$real$ucl[2]
+p.residents <- Cm.results$Phi.tsm.p.t$results$real$estimate[1]/Cm.results$Phi.tsm.p.t$results$real$estimate[2]
+p.residents.low <- Cm.results$Phi.tsm.p.t$results$real$lcl[1]/Cm.results$Phi.tsm.p.t$results$real$lcl[2]
+p.residents.high <- Cm.results$Phi.tsm.p.t$results$real$ucl[1]/Cm.results$Phi.tsm.p.t$results$real$ucl[2]
+
 ```
 
-The estimated survival rate of the residents was ```r signif(cm.results$Phi.tsm.p.t$results$real[2, "estimate"], 3)``` (SE = ```r signif(cm.results$Phi.tsm.p.t$results$real[2, "se"], 3)```, 95% CI = [```r signif(cm.results$Phi.tsm.p.t$results$real[2, "lcl"], 3)```, ```r signif(cm.results$Phi.tsm.p.t$results$real[2, "ucl"], 3)```]). Using the estimated two survival rates, the proportion of residents in the aggregation was computed to be ```r signif(p.residents, 3)``` (95% CI = ```r signif(p.residents.low, 3)``` - ```r signif(p.residents.high, 3)```). 
+The estimated survival rate of the residents was ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "estimate"], 3)``` (SE = ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "se"], 3)```, 95% CI = [```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "lcl"], 3)```, ```r signif(Cm.results$Phi.tsm.p.t$results$real[2, "ucl"], 3)```]). Using the estimated two survival rates, the proportion of residents in the aggregation was computed to be ```r signif(p.residents, 3)``` (95% CI = ```r signif(p.residents.low, 3)``` - ```r signif(p.residents.high, 3)```). 
 
-Abundance was computed from the estimated capture probability and the number of captured turtles per season using the Horvitz-Thompson estimator. 
+#### Abundance and population growth
+Abundance was computed from the estimated capture probability and the number of captured turtles per season using the Horvitz-Thompson estimator. According to the paper by Groom et al. (2017; Estimating long-term trends in abundance and survival for nesting flatback turtles in Kakadu National Park, Australia. Endangered Species Research 32:203-211), the SE of Nhat from Horvitz-Thompson estimator is sqrt{(n/p_i)^2 (var(p_i)/p_i^2)}. 
+
+The estimated proportion of residents is not included in the abundance estimates here. So, the abundance includes transients. 
 
 ```{r Nhats, echo=FALSE, include=F, cache=T}
-phats <- cm.results$Phi.tsm.p.t$results$real[3:38, c("estimate", "lcl", "ucl")]
-phats$season <- colnames(CJS.data$data)[2:(ncol(CJS.data$data))]
+phats <- Cm.results$Phi.tsm.p.t$results$real[3:nrow(Cm.results$Phi.tsm.p.t$results$real), 
+                                             c("estimate", "se", "lcl", "ucl")]
+phats$season <- colnames(data.0)[2:(ncol(data.0))]
 
-n.caught <- colSums(CJS.data$data)
-Nhats.df <- data.frame(season = colnames(CJS.data$data)[2:(ncol(CJS.data$data))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * p.residents,
-                       lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-                       ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents)
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = Nhat)) +
-  geom_errorbar(aes(x = season, ymin = lcl, ymax = ucl)) +
+  geom_errorbar(aes(x = season, ymin = lcl2, ymax = ucl)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   ylab("Abundance (95% CI)")
 
 if (save.fig)
-  ggsave(plot = p.Nhats, filename = "figures/Cm_Nhats.png",
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats.png",
          device = "png", dpi = 600)
 
 ```
 
 
-```{r plot_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles"}
+```{r plot_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats.png"))
 ```
 
+To estimate the long-term population trend and possible deviation from a long-term trend, I fitted population growth models to the Horvitz-Thompson estimates. I considered the exponential and logistic models.
+
+Exponential model: Nt = N0 exp(rt)
+
+Logistic model: dN/dt = rN(k - N)/K
+
+I used the Bayesian approach to estimate r and K. Both models converged according to the Rhat statistic. 
+
+```{r exp_fit, echo=FALSE, include=F, cache=T}
+Nhats.df %>% 
+  mutate(time = cumsum(CJS.data$delta.dates) - CJS.data$delta.dates[1]) -> Nhats.df
+
+if (!file.exists("RData/Cm_exp_jags.rds")){
+  jags.data <- list(N = Nhats.df$Nhat,
+                    time = Nhats.df$time,
+                    length_t = nrow(Nhats.df),
+                    mu_N1 = 1000)
+  
+  MCMC.params <- list(n.samples = 50000,
+                      n.burnin = 30000,
+                      n.thin = 5,
+                      n.chains = 5,
+                      model.file = "models/Model_exponential.txt")
+  
+  parameters <- c("mu_N", "r", "sd_N", "deviance", "DIC", "loglik")
+  
+  jm.exp <- jags(data = jags.data,
+                 parameters.to.save= parameters,
+                 model.file = MCMC.params$model.file,
+                 n.chains = MCMC.params$n.chains,
+                 n.burnin = MCMC.params$n.burnin,
+                 n.thin = MCMC.params$n.thin,
+                 n.iter = MCMC.params$n.samples,
+                 DIC = T, 
+                 parallel=T)
+  
+  jags.out.exp <- list(jm = jm.exp,
+                       data = jags.data,
+                       MCMC.params = MCMC.params,
+                       parameters = parameters)
+  
+  saveRDS(jags.out.exp, file = "RData/Cm_exp_jags.rds")
+} else {
+  
+  jags.out.exp <- readRDS(file = "RData/Cm_exp_jags.rds")
+  jags.data <- jags.out.exp$data
+  MCMC.params <- jags.out.exp$MCMC.params
+  parameters <- jags.out.exp$parameters
+  jm.exp <- jags.out.exp$jm
+}
+
+n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
+
+data.vector <- as.vector(jags.data$N) %>% 
+  rep(each = MCMC.params$n.chains * n.per.chain)
+
+loo.out.jm.exp <- compute.LOOIC(loglik = jm.exp$sims.list$loglik, 
+                                data.vector = data.vector, 
+                                MCMC.params = MCMC.params)
+
+# jm.linear$summary
+# pop.growth <- lm(log(Nhat) ~ time, data = Nhats.df)
+# lm.summary <- summary(pop.growth)
+```
+
+There were ```r sum(loo.out.jm.exp$loo.out$diagnostics$pareto_k>0.7)``` data points that indicated high Pareto-k statistics (lack of fit). 
+
+The mean estimated r for the exponential model was ```r signif(jm.exp$mean$r, 3)``` (SE = ```r signif(jm.exp$sd$r, 3)```). The growth appeared to be faster than estimated in the early years and it appeared to plateau in the recent years (Figure 6). The deviation from the fitted growth function was also seen in the residual plot (Figure 7).
+
+```{r plot_exp, echo=FALSE, include=F, cache=T}
+jm.exp$summary %>% data.frame() %>%
+  rownames_to_column(var = "Parameter") -> jm.exp.df
+
+exp.r <- filter(jm.exp.df, str_detect(Parameter, "r"))
+jm.exp.df %>% filter(str_detect(Parameter, "mu_N")) -> exp.mu_N.df
+
+Nhats.df %>% mutate(N.exp.predict = exp.mu_N.df$mean) -> Nhats2.df
+
+p.exp.fit <- ggplot(data = Nhats2.df) +
+  geom_path(aes(x = time, y = Nhat),
+            color = "blue") +
+  geom_path(aes(x = time, y = N.exp.predict),
+            color = "orange")
+
+#p.exp.fit
+if (save.fig)
+  ggsave(plot = p.exp.fit, 
+         filename = "figures/Cm_Nhats_exp.png",
+         device = "png", dpi = 600)
+
+```
 
 
+```{r plot_exp_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 6. The fitted exponential model to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_exp.png"))
+
+```
+
+```{r residuals_exp, echo=FALSE, include=F, cache=T}
+Nhats2.df %>% mutate(exp.residual = Nhat - N.exp.predict,
+                     pareto_exp = loo.out.jm.exp$loo.out$diagnostics$pareto_k) -> Nhats2.df
+
+p.residual.exp <- ggplot(data = Nhats2.df) + 
+  geom_point(aes(x = time, y = exp.residual, 
+                 size = pareto_exp)) +
+  labs(size = "Pareto K",
+       title = "Residuals of exponential model") +
+  ylab("Residual") + xlab("")
+  
+
+#p.residual.exp
+if (save.fig)
+  ggsave(plot = p.residual.exp, 
+         filename = "figures/Cm_residuals_exp.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_exp_residuals, echo=FALSE, cache=TRUE, fig.cap="Figure 7. Residuals of the exponential model fitted to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_residuals_exp.png"))
+
+```
+
+The logistic model incorporates the carrying capacity to the exponential model. 
+
+
+```{r logistic_fit, echo=FALSE, include=F, cache=T}
+
+if (!file.exists("RData/Cm_logistic_jags.rds")){
+  jags.data$K0 <- 25000
+  
+  MCMC.params$model.file = "models/Model_continuous_time_logistic.txt"
+  
+  parameters <- c("mu_N", "r", "K", "sd_N", 
+                  "deviance", "DIC", "loglik")
+  
+  jm.logistic <- jags(data = jags.data,
+                      parameters.to.save= parameters,
+                      model.file = MCMC.params$model.file,
+                      n.chains = MCMC.params$n.chains,
+                      n.burnin = MCMC.params$n.burnin,
+                      n.thin = MCMC.params$n.thin,
+                      n.iter = MCMC.params$n.samples,
+                      DIC = T, 
+                      parallel=T)
+  
+  jags.out.logistic <- list(jm = jm.logistic,
+                            data = jags.data,
+                            MCMC.params = MCMC.params,
+                            parameters = parameters)
+  
+  saveRDS(jags.out.logistic, 
+          file = "RData/Cm_logistics_jags.rds")
+} else {
+  
+  jags.out.logistic <- readRDS(file = "RData/Cm_logistics_jags.rds")
+  jags.data <- jags.out.logistic$data
+  MCMC.params <- jags.out.logistic$MCMC.params
+  parameters <- jags.out.logistic$parameters
+  jm.logistic <- jags.out.logistic$jm
+}
+
+n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
+
+loo.out.jm.logistic <- compute.LOOIC(loglik = jm.logistic$sims.list$loglik, 
+                                data.vector = data.vector, 
+                                MCMC.params = MCMC.params)
+
+#jm.logistic$summary
+```
+
+Similarly to the exponential model, ```r sum(loo.out.jm.logistic$loo.out$diagnostics$pareto_k > 0.7)``` data points indicated high Pareto-K statistic (> 0.7) indicating lack of fit. 
+
+
+```{r plot_logistic, echo=F, include=F, cache=T}
+jm.logistic$summary %>% data.frame() %>%
+  rownames_to_column(var = "Parameter") -> jm.logistic.df
+
+logistic.r <- filter(jm.logistic.df, str_detect(Parameter, "r"))
+logistic.K <- filter(jm.logistic.df, str_detect(Parameter, "K"))
+jm.logistic.df %>% filter(str_detect(Parameter, "mu_N")) -> logistic.mu_N.df
+
+Nhats2.df %>% mutate(N.logistic.predict = logistic.mu_N.df$mean) -> Nhats2.df
+
+p.logistic.fit <- ggplot(data = Nhats2.df) +
+  geom_path(aes(x = time, y = Nhat),
+            color = "blue") +
+  geom_path(aes(x = time, y = N.logistic.predict),
+            color = "orange")
+
+p.logistic.fit
+if (save.fig)
+  ggsave(plot = p.logistic.fit, 
+         filename = "figures/Cm_Nhats_logistic.png",
+         device = "png", dpi = 600)
+```
+
+```{r plot_logistic_Nhats, echo=F, include=F, fig.cap="Figure 8. The fitted logistic model to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_logistic.png"))
+
+```
+
+
+```{r residuals_logistic, echo=F, include=F}
+Nhats2.df %>% mutate(logistic.residual = Nhat - N.logistic.predict,
+                     pareto_logistic = loo.out.jm.logistic$loo.out$diagnostics$pareto_k) -> Nhats2.df
+
+p.residual.logistic <- ggplot(data = Nhats2.df) + 
+  geom_point(aes(x = time, y = logistic.residual,
+                 size = pareto_logistic)) +
+   labs(size = "Pareto K",
+       title = "Residuals of logistic model") +
+  ylab("Residual") + xlab("")
+ 
+
+p.residual.logistic
+if (save.fig)
+  ggsave(plot = p.residual.logistic, 
+         filename = "figures/Cm_residuals_logistic.png",
+         device = "png", dpi = 600)
+
+```
+
+```{r plot_logistic_residuals, echo=FALSE, cache=TRUE, fig.cap="Figure 9. Residuals of the logistic model fitted to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_residuals_logistic.png"))
+
+```
+
+When the fit of these two models were compared, the deviance information criteria (DIC) and leave-one-out informatoin criteria (LOOIC) indicated that the logistic model was better than the exponential model (delta DIC = ```r jm.exp$DIC - jm.logistic$DIC```, deltaLOOIC = ```r loo.out.jm.exp$loo.out$estimates["looic", "Estimate"] - loo.out.jm.logistic$loo.out$estimates["looic", "Estimate"]```).
+
+A close look at Pareto-K statistic indicated that the recent estimates had large values (Figures 7 and 9) for the two models. In the following I use the results of the logistic model as it was considered a better model based on DIC and LOOIC values.  
+
+K is quite large (mean = ```r format(signif(jm.logistic$mean$K, 6), scientific = F)```, SE = ```r signif(jm.logistic$sd$K, 3)```) and the estimated r (mean = ```r signif(jm.logistic$mean$r, 3)```, SE = ```r format(signif(jm.logistic$sd$r, 3), scientific = F)```) was much greater than what was found from the exponential model (mean = ```r signif(jm.exp$mean$r, 3)```, SE = ```r format(signif(jm.exp$sd$r, 3), scientific=F)```). 
+
+```{r summary_logistic, echo=F, include=T}
+p.posteriors_K_r <- mcmc_dens(jm.logistic$samples, c("K", "r"))
+
+if (save.fig)
+  ggsave(filename = "figures/posteriors_K_r.png",
+         plot = p.posteriors_K_r, device = "png", dpi = 600)
+```
+
+
+```{r plot_logistic_posteriors, echo=FALSE, cache=TRUE, fig.cap="Figure 10. Posterior distributions of carrying capaity (K) and population growth rate (r) from the logistic population model fitted to the estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/posteriors_K_r.png"))
+
+```

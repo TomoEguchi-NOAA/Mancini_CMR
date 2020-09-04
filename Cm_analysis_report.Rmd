@@ -646,7 +646,7 @@ Logistic model: dN/dt = rN(k - N)/K
 
 I used the Bayesian approach to estimate r and K. Both models converged according to the Rhat statistic. 
 
-```{r Nhats_exp, echo=FALSE, include=F, cache=T}
+```{r exp_fit, echo=FALSE, include=F, cache=T}
 Nhats.df %>% 
   mutate(time = cumsum(CJS.data$delta.dates) - CJS.data$delta.dates[1]) -> Nhats.df
 
@@ -675,10 +675,8 @@ jm.exp <- jags(data = jags.data,
 
 n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
 
-data.vector <- as.vector(jags.data$jags.data$N) %>% 
+data.vector <- as.vector(jags.data$N) %>% 
   rep(each = MCMC.params$n.chains * n.per.chain)
-
-# START HERE ON 2020-09-04 - LOGLIK IS NOT THE RIGHT FORMAT TO COMPUTE LOOIC
 
 loo.out.jm.exp <- compute.LOOIC(loglik = jm.exp$sims.list$loglik, 
                                 data.vector = data.vector, 
@@ -689,6 +687,8 @@ loo.out.jm.exp <- compute.LOOIC(loglik = jm.exp$sims.list$loglik,
 # lm.summary <- summary(pop.growth)
 ```
 
+There were ```r sum(loo.out.jm.exp$loo.out$diagnostics$pareto_k>0.7)``` data points that indicated high Pareto-k statistics (lack of fit). 
+
 The mean estimated r for the exponential model was ```r signif(jm.exp$mean$r, 3)``` (SE = ```r signif(jm.exp$sd$r, 3)```). The growth appeared to be faster than estimated in the early years and it appeared to plateau in the recent years (Figure 6). The deviation from the fitted growth function was also seen in the residual plot (Figure 7).
 
 ```{r plot_exp, echo=FALSE, include=F, cache=T}
@@ -698,12 +698,12 @@ jm.exp$summary %>% data.frame() %>%
 exp.r <- filter(jm.exp.df, str_detect(Parameter, "r"))
 jm.exp.df %>% filter(str_detect(Parameter, "mu_N")) -> exp.mu_N.df
 
-Nhats.df %>% mutate(N.predict = exp.mu_N.df$mean[1] * exp(exp.r$mean[1] * time)) -> Nhats2.df
+Nhats.df %>% mutate(N.exp.predict = exp.mu_N.df$mean) -> Nhats2.df
 
 p.exp.fit <- ggplot(data = Nhats2.df) +
   geom_path(aes(x = time, y = Nhat),
             color = "blue") +
-  geom_path(aes(x = time, y = N.predict),
+  geom_path(aes(x = time, y = N.exp.predict),
             color = "orange")
 
 #p.exp.fit
@@ -715,16 +715,22 @@ if (save.fig)
 ```
 
 
-```{r plot_linear_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 6. The fitted exponential model to estimated abundance of green turtles"}
+```{r plot_exp_Nhats, echo=FALSE, cache=TRUE, fig.cap="Figure 6. The fitted exponential model to estimated abundance of green turtles"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_exp.png"))
 
 ```
 
-```{r residuals_linear, echo=FALSE, include=F, cache=T}
-Nhats2.df %>% mutate(residual = Nhat - N.predict) -> Nhats2.df
+```{r residuals_exp, echo=FALSE, include=F, cache=T}
+Nhats2.df %>% mutate(exp.residual = Nhat - N.exp.predict,
+                     pareto_exp = loo.out.jm.exp$loo.out$diagnostics$pareto_k) -> Nhats2.df
 
 p.residual.exp <- ggplot(data = Nhats2.df) + 
-  geom_point(aes(x = time, y = residual))
+  geom_point(aes(x = time, y = exp.residual, 
+                 size = pareto_exp)) +
+  labs(size = "Pareto K",
+       title = "Residuals of exponential model") +
+  ylab("Residual") + xlab("")
+  
 
 #p.residual.exp
 if (save.fig)
@@ -735,7 +741,7 @@ if (save.fig)
 ```
 
 
-```{r plot_linear_residuals, echo=FALSE, cache=TRUE, fig.cap="Figure 7. Residuals of the exponential model fitted to estimated abundance of green turtles"}
+```{r plot_exp_residuals, echo=FALSE, cache=TRUE, fig.cap="Figure 7. Residuals of the exponential model fitted to estimated abundance of green turtles"}
 knitr::include_graphics(paste0("figures/Cm_residuals_exp.png"))
 
 ```
@@ -745,18 +751,9 @@ The logistic model incorporates the carrying capacity to the exponential model.
 
 ```{r logistic_fit, echo=FALSE, include=F, cache=T}
 
-jags.data <- list(N = Nhats.df$Nhat,
-                  time = Nhats.df$time,
-                  length_t = nrow(Nhats.df),
-                  K0 = 25000,
-                  mu_N1 = 1000)
+jags.data$K0 <- 25000
 
-
-MCMC.params <- list(n.samples = 50000,
-                    n.burnin = 30000,
-                    n.thin = 5,
-                    n.chains = 5,
-                    model.file = "models/Model_continuous_time_logistic.txt")
+MCMC.params$model.file = "models/Model_continuous_time_logistic.txt"
 
 parameters <- c("mu_N", "r", "K", "sd_N", "deviance", "DIC", "loglik")
 
@@ -770,70 +767,80 @@ jm.logistic <- jags(data = jags.data,
                     DIC = T, 
                     parallel=T)
 
+n.per.chain <- (MCMC.params$n.samples - MCMC.params$n.burnin)/MCMC.params$n.thin
+
+loo.out.jm.logistic <- compute.LOOIC(loglik = jm.logistic$sims.list$loglik, 
+                                data.vector = data.vector, 
+                                MCMC.params = MCMC.params)
+
 #jm.logistic$summary
 ```
 
-When the fit of these two models were compared, the deviance information criteria (DIC) indicated that the logistic model was better than the exponential model (delta DIC = ```r jm.exp$DIC - jm.logistic$DIC```). 
+Similarly to the exponential model, ```r sum(loo.out.jm.logistic$loo.out$diagnostics$pareto_k > 0.7)``` data points indicated high Pareto-K statistic (> 0.7) indicating lack of fit. 
 
-Trace plots look okay:
 
-```{r trace_plot_logistic, echo=FALSE, include=T, cache=T}
-mcmc_trace(jm.logistic$samples, c("K", "r", "sd_N"))
-```
-
-Compare
-
-Summary of K and r are here:
-
-```{r summary_logistic, echo=F, include=T}
+```{r plot_logistic, echo=F, include=F, cache=T}
 jm.logistic$summary %>% data.frame() %>%
-  rownames_to_column(var = "Parameter")  -> jm.out.df
+  rownames_to_column(var = "Parameter") -> jm.logistic.df
 
-post_K <- jm.out.df %>% filter(str_detect(Parameter, "K"))
-post_r <- jm.out.df %>% filter(str_detect(Parameter, "r"))
+logistic.r <- filter(jm.logistic.df, str_detect(Parameter, "r"))
+logistic.K <- filter(jm.logistic.df, str_detect(Parameter, "K"))
+jm.logistic.df %>% filter(str_detect(Parameter, "mu_N")) -> logistic.mu_N.df
 
-mcmc_dens(jm.logistic$samples, c("K", "r"))
-```
+Nhats2.df %>% mutate(N.logistic.predict = logistic.mu_N.df$mean) -> Nhats2.df
 
-The logistic model was considered better than the exponential model based on the DIC, where 
+p.logistic.fit <- ggplot(data = Nhats2.df) +
+  geom_path(aes(x = time, y = Nhat),
+            color = "blue") +
+  geom_path(aes(x = time, y = N.logistic.predict),
+            color = "orange")
 
-K is quite large (mean = ```r format(signif(jm.logistic$mean$K, 6), scientific = F)```, SE = ```r signif(jm.logistic$sd$K, 3)```) and the estimated r (mean = ```r signif(jm.logistic$mean$r, 3)```, SE = ```r format(signif(jm.logistic$sd$r, 3), scientific = F)```) is much greater than what was found from the exponential model (mean = ```r signif(jm.exp$mean$r, 3)```, SE = ```r format(signif(jm.exp$sd$r, 3), scientific=F)```). 
-
-
-```{r plot_logistic, echo=F, include=F}
-sd_N <- jm.out.df %>% filter(str_detect(Parameter, "sd_N"))
-
-jm.out.df %>% filter(str_detect(Parameter, "mu_N")) %>% # -> jm.out.muN.df # 
-  mutate(time = Nhats.df$time[2:nrow(Nhats.df)],
-         Nlow = mean - 1.96 * sd_N$mean,
-         Nhigh = mean + 1.96 * sd_N$mean) -> jm.out.muN.df
-
-p.logistic.fit <- ggplot() + 
-  geom_path(data = Nhats.df,
-            aes(x = time, y = Nhat),
-            color = "darkblue") + 
-  geom_path(data = jm.out.muN.df,
-            aes(x = time, y = mean),
-            color = "orange") + 
-  # geom_point(data = jm.out.muN.df,
-  #           aes(x = time, y = mean)) +
-  geom_ribbon(data = jm.out.muN.df,
-              aes(x = time,
-                  ymin = X2.5., 
-                  ymax = X97.5.),
-              fill = "orange",
-              alpha = 0.6)
-
+p.logistic.fit
 if (save.fig)
   ggsave(plot = p.logistic.fit, 
          filename = "figures/Cm_Nhats_logistic.png",
          device = "png", dpi = 600)
+```
+
+```{r plot_logistic_Nhats, echo=F, include=F, fig.cap="Figure 8. The fitted logistic model to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_logistic.png"))
 
 ```
 
-```{r plot_Nhats_logistic, echo=FALSE, cache=TRUE, fig.cap="Figure 8. Logistic model fitted to estimated abundance of green turtles"}
-knitr::include_graphics(paste0("figures/Cm_Nhats_logistic.png"))
 
+```{r residuals_logistic, echo=F, include=F}
+Nhats2.df %>% mutate(logistic.residual = Nhat - N.logistic.predict,
+                     pareto_logistic = loo.out.jm.logistic$loo.out$diagnostics$pareto_k) -> Nhats2.df
+
+p.residual.logistic <- ggplot(data = Nhats2.df) + 
+  geom_point(aes(x = time, y = logistic.residual,
+                 size = pareto_logistic)) +
+   labs(size = "Pareto K",
+       title = "Residuals of logistic model") +
+  ylab("Residual") + xlab("")
+ 
+
+p.residual.logistic
+if (save.fig)
+  ggsave(plot = p.residual.logistic, 
+         filename = "figures/Cm_residuals_logistic.png",
+         device = "png", dpi = 600)
+
+```
+
+```{r plot_logistic_residuals, echo=FALSE, cache=TRUE, fig.cap="Figure 9. Residuals of the logistic model fitted to estimated abundance of green turtles"}
+knitr::include_graphics(paste0("figures/Cm_residuals_logistic.png"))
+
+```
+
+When the fit of these two models were compared, the deviance information criteria (DIC) and leave-one-out informatoin criteria (LOOIC) indicated that the logistic model was better than the exponential model (delta DIC = ```r jm.exp$DIC - jm.logistic$DIC```, deltaLOOIC = ```r loo.out.jm.exp$loo.out$estimates["looic", "Estimate"] - loo.out.jm.logistic$loo.out$estimates["looic", "Estimate"]```).
+
+A close look at Pareto-K statistic indicated that the recent estimates had large values (Figures 7 and 9) for the two models. In the following I use the results of the logistic model as it was considered a better model based on DIC and LOOIC values.  
+
+K is quite large (mean = ```r format(signif(jm.logistic$mean$K, 6), scientific = F)```, SE = ```r signif(jm.logistic$sd$K, 3)```) and the estimated r (mean = ```r signif(jm.logistic$mean$r, 3)```, SE = ```r format(signif(jm.logistic$sd$r, 3), scientific = F)```) was much greater than what was found from the exponential model (mean = ```r signif(jm.exp$mean$r, 3)```, SE = ```r format(signif(jm.exp$sd$r, 3), scientific=F)```). 
+
+```{r summary_logistic, echo=F, include=T}
+mcmc_dens(jm.logistic$samples, c("K", "r"))
 ```
 
 

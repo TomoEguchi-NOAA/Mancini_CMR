@@ -62,9 +62,10 @@ Bring in the data file and get ready for CJS
 ```{r warning=F}
 #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
-dat.1 <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
 
-dat.1 %>% filter(species == "Cm") -> dat.1.Cm
+# there are In in the species code... 
+#dat.1 %>% filter(species == "Cm") -> dat.1.Cm
 
 CJS.data <- dat2CJS(dat.1.Cm, save.file = FALSE)
 
@@ -91,7 +92,7 @@ CH.2 <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
 # transient.vec <- rep(1, times = length(n.cap))
 # transient.vec[n.cap > 1] <- 2
 
-# need to count how many capture events occured per season
+# need to count how many capture events occurred per season
 dat.1.Cm %>% select(season, "DATE") %>% 
   group_by(season) %>% #-> tmp3
   summarise(effort = n_distinct(DATE)) -> effort.season
@@ -172,9 +173,21 @@ ddl$Phi$tsm[ddl$Phi$age == 0] <- 2
 ddl$p$tsm <- 1
 ddl$p$tsm[ddl$p$age == 0] <- 2
 
-cm.results <- do_analysis(dp = dp, ddl = ddl)
+Cm.results <- do_analysis(dp = dp, ddl = ddl)
 
-saveRDS(cm.results, file = "RData/CJS_Cm_RMark.rds")
+Cm.CJS.input <- list(raw.data = dat.1.Cm,
+                     CJS.data = CJS.data,
+                     CH.1 = CH.1,
+                     CH.R2ucare = CH.2,
+                     effort = effort.season,
+                     CH = CH,
+                     delta.dates = delta.dates,
+                     dp = dp,
+                     ddl = ddl,
+                     run.date = Sys.Date())
+
+saveRDS(Cm.results, file = "RData/CJS_Cm_RMark.rds")
+saveRDS(Cm.CJS.input, file = "RData/CJS_Cm_RMark_input.rds")
 
 ```
 
@@ -182,9 +195,9 @@ Export to Mark to see Release GOF or median c-hat.
 ```{r}
 export.MARK(dp, 
             project.name = "Mancini_Cm", 
-            model = cm.results$Phi.tsm.p.t, 
+            model = Cm.results$Phi.tsm.p.t, 
             replace = T, 
-            chat = 4.75)
+            chat = 5.6)
 ```
 
 Median c-hat test returned semi-acceptable results of estimated c-hat = 1.xxx, with 95%CI = ().  
@@ -194,13 +207,13 @@ Release output is similar to what I find below from R2ucare.
 Compare results using AICc:
 
 ```{r}
-model.table(cm.results)
+model.table(Cm.results)
 ```
 
 According to AICc, the best one is Phi(tsm)p(time). But c-hat > 4 (4.75)!  This is better than before but, obviously, this isn't a great model... What to do? 
 
 Look at the estimates:
 ```{r}
-cm.results$Phi.tsm.p.t$results$real
+Cm.results$Phi.tsm.p.t$results$real
 ```
 

@@ -1,4 +1,42 @@
 
+
+
+do_analysis <- function(dp, ddl)
+{
+  # create formulas for Phi
+  # tsm is time-since-marking; check for transient effects
+  Phi.dot <-  list(formula = ~ 1)  
+  #Phi.weight <- list(formula= ~ min_weight)   # many missing data 
+  #Phi.t <- list(formula = ~ time)             # we never have this model worked for turtles... 
+  #Phi.season <- list(formula = ~ sum_win)      # this also is unlikely... 
+  #Phi.transience <- list(formula = ~ Transient)
+  Phi.tsm <- list(formula = ~ tsm)
+  
+  #create formulas for p
+  p.dot <- list(formula = ~ 1)
+  p.t <- list(formula = ~ time)
+  p.tsm <- list(formula = ~ tsm)
+  #p.transience <- list(formula = ~ Transient)
+  #p.tsm.transience <- list(formula = ~ tsm + Transient)
+  #p.t.transience <- list(formula = ~ time + Transient)
+  p.effort <- list(formula = ~ effort)
+  p.season <- list(formula = ~ sum_win)
+  p.tsm.season <- list(formula = ~ tsm + sum_win)
+  p.tsm.effort <- list(formula = ~ tsm + effort)
+  
+  # create all combinations 
+  cml <- create.model.list("CJS")
+  
+  # run all all models and return as a list with class marklist
+  results <- mark.wrapper(cml,
+                          data=dp,
+                          ddl=ddl,
+                          output=FALSE,
+                          silent=TRUE)
+  return(results)
+}
+
+
 Cm.vonBert.jags.data <- function(dat.1){
   # remove rows with is.na(CCL) is true:
   dat.1 %>% filter(!is.na(CCL)) -> dat.2
@@ -130,7 +168,8 @@ get.data.Cm <- function(filename){
               CCL = CCL,
               weight_kg = Weight,
               sex = Sex,
-              species = Sp_code)-> dat.1
+              species = as.factor(Sp_code),
+              community = Community_code)-> dat.1
   
   return(dat.1)
 }

@@ -21,7 +21,7 @@ library(RMark)
 library(R2ucare)
 
 source("Mancini_functions.R")
-
+save.fig <- F
 ```
 
 Bring in the data file and get ready for CJS
@@ -37,8 +37,8 @@ community.names <- levels(as.factor(dat.1.Cm$community))
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
 k <- 18
-p.recap <- vector(mode = "numeric", length = length(community.names))
-#community.names.used <- vector(mode = "character", length = length(community.names))
+p.recap <- vector(mode = "numeric")
+community.names.used <- vector(mode = "character")
 
 for (k in 1:length(community.names)){
   
@@ -49,7 +49,7 @@ for (k in 1:length(community.names)){
     p.recap[k] <- n.GT2.cap/nrow(CJS.data$data)
     
     if (p.recap[k] > 0.05){
-      #community.names.used[c + 1] <- community.names[k]
+      community.names.used[c + 1] <- community.names[k]
       CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
       
       # using R2ucare::group_data to combine CHs
@@ -134,35 +134,81 @@ for (k in 1:length(community.names)){
               file = paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))
       saveRDS(Cm.CJS.input, 
               file = paste0("RData/CJS_Cm_RMark_input_", community.names[k], ".rds"))
-      
+      c <- c + 1
     } else {
       print(paste("Commuinity", community.names[k], 
                   "did not have sufficient recapture probability (p < 0.05)."))
-      c <- c + 1
+      
     }
     
+  } else {
+    community.names.used[[c+1]] <- community.names[k]
+    c <- c + 1
   }
   
 }
 
-
+# clean up Mark output files because results are saved in .rds files. Second thought... some results (e.g., c-hat) are not available in RMark output. So, I'll keep them. Second second thought - chat can be computed from overall CJS results (R2ucare) - chi2/df. So, I remove them.
+cleanup(ask = F)
 ```
+
+Of ```r length(community.names)``` communities, only ```r length(community.names.used)``` communities contained had sufficient recaptures. Data for  ```r length(community.names) - length(community.names.used)```  communities were not used in the following analysis. 
 
 #### Goodness-of-fit
 
-Of ```r length(community.names)``` communities, there were ```r length(community.names) - c``` communities for which CJS models could be fit. Others (n = ```r c``` did not have sufficient numbers of recaptures.
+##### Overall test
+
+```{r overall, echo=F, include=F, cache=T, warning=F}
+
+overall_Cm <- vector(mode = "list")
+for (k in 1:length(community.names.used)){
+  output.filename <- paste0("RData/CJS_Cm_RMark_input_", community.names.used[k], ".rds")
+  if (file.exists(output.filename)){
+    results.k <- readRDS(file = output.filename)
+    #CH.Ucare <-R2ucare::group_data(CJS.data$data, effX = rep(1, nrow(CJS.data$data)))
+    CH.Ucare <- results.k$CH.R2ucare
+    
+    overall_Cm[[k]] <- list(community = community.names.used[k],
+                            test.out = overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
+                                                   freq = CH.Ucare$effY)) 
+  }
+}
+
+overall.GOF <- lapply(overall_Cm, 
+                      FUN = function(x) out.list <- list(community  = x$community, 
+                                                         Chi2 = x$test.out$chi2,
+                                                         df = x$test.out$degree_of_freedom,
+                                                         p_val = x$test.out$p_value,
+                                                         c_hat = x$test.out$chi2/x$test.out$degree_of_freedom))
+
+overall.GOF.df <- data.frame(do.call(rbind, overall.GOF))
+
+```
+
+
+
+```{r table_overall_GOF, echo=F, include=T}
+knitr::kable(overall.GOF.df, 
+             digits = 2,
+             col.names = c("Community", "Chi2", "df", "p val", "c-hat"),
+             caption = "Table 3. Results from overall goodness-of fit",
+             table.attr = "style='width:30%;'")
+```
+
+Not sure what's happening for GNO... NaNs are not good here. I need to look into what happened for the dataset.
+
+OVer dispersion seems to be not a problem. More of underdispersion... 
 
 ```{r GOF_test3sr, echo=FALSE, include=F, cache=T}
 #CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
-library(R2ucare)
 
 # using R2ucare::group_data to combine CHs
 # these need to be done for each community
 k <-  1
-c <- 0
-test3sr_Cm <- test3sm_Cm <- test2ct_Cm <- test2cl_Cm <- vector(mode = "list", length = length(community.names))
-for (k in 1:length(community.names)){
-  output.filename <- paste0("RData/CJS_Cm_RMark_input_", community.names[k], ".rds")
+#c <- 0
+test3sr_Cm <- test3sm_Cm <- test2ct_Cm <- test2cl_Cm <- vector(mode = "list")
+for (k in 1:length(community.names.used)){
+  output.filename <- paste0("RData/CJS_Cm_RMark_input_", community.names.used[k], ".rds")
   if (file.exists(output.filename)){
     results.k <- readRDS(file = output.filename)
     #CH.Ucare <-R2ucare::group_data(CJS.data$data, effX = rep(1, nrow(CJS.data$data)))
@@ -171,42 +217,50 @@ for (k in 1:length(community.names)){
     #individuals captured at time (i) in the probability of being recaptured at some later time > i (i.e., that
     #whether or not an animal is ever encountered again is not a function of whether or not it is newly
     #marked).
-    test3sr_Cm[[c+1]] <- list(community = community.names[k],
+    test3sr_Cm[[k]] <- list(community = community.names.used[k],
                               test.out = test3sr(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
                                                  freq = CH.Ucare$effY)) 
     
-    test3sm_Cm[[c+1]] <- list(community = community.names[k],
+    test3sm_Cm[[k]] <- list(community = community.names.used[k],
                               test.out = test3sm(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
                                  freq = CH.Ucare$effY))
 
-    test2ct_Cm[[c+1]] <- list(community = community.names[k],
+    test2ct_Cm[[k]] <- list(community = community.names.used[k],
                               test.out = test2ct(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
                                                  freq = CH.Ucare$effY))
 
-    test2cl_Cm[[c+1]] <- list(community = community.names[k],
+    test2cl_Cm[[k]] <- list(community = community.names.used[k],
                               test.out = test2cl(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
                                                  freq = CH.Ucare$effY))
-    c <- c + 1
+    #c <- c + 1
 
   }
 }
  
-# # Need to do some GOF testing here.
-# 
-# test3sr.signif <- filter(test3sr.details, p_val < 0.05)
-# test3sr.signif.01 <- filter(test3sr.details, p_val < 0.01)
+
 ```
 
 ##### TEST3.SR
 TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." 
 
-There were ```r nrow(test3sr.signif)``` occasions that were flagged by this statistic (Table 2). Note that if we decrease the alpha level to 0.01, ```r nrow(test3sr.signif.01)``` occasions would be flagged. (I know this is not the correct way to do a statistical analysis but just pointing out the somewhat arbitrary nature of the significance tests.)
+```{r}
+test3sr.overall <- lapply(test3sr_Cm, 
+                         FUN = function(x){out.list <- list(community  = x$community, 
+                                                            stat = unname(x$test.out$test3sr["stat"]),
+                                                            df = unname(x$test.out$test3sr["df"]),
+                                                            p_val = unname(x$test.out$test3sr["p_val"]),
+                                                            sign_test = unname(x$test.out$test3sr["sign_test"]))
+                         return(out.list)})
+
+test3sr.overall.df <- data.frame(do.call(rbind, test3sr.overall))
+```
+
 
 ```{r table_test3sr, echo=F, include=T}
-knitr::kable(test3sr.signif, 
+knitr::kable(test3sr.overall.df, 
              digits = 2,
-             col.names = c("Occasion", "Stat", "p val", "signed test", "test"),
-             caption = "Table 2. Significant results from Test3.sr, which evaluates difference in survival among individuals depending on whether or not they were seen for the first time either on or before the i-th occasion",
+             col.names = c("Community", "Stat", "df", "p val", "signed test"),
+             caption = "Table 3. Results from Test3.sr, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
              table.attr = "style='width:30%;'")
 ```
 
@@ -215,20 +269,22 @@ knitr::kable(test3sr.signif,
 TEST3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again. "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
 
 ```{r test3.sm, echo=F, include=F, cache=T}
-# TEST3.Sm tests the hypothesis that there is no difference in the expected
-# time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at
-# least once
+test3sm.overall <- lapply(test3sm_Cm, 
+                          FUN = function(x) out.list <- list(community  = x$community, 
+                                                             stat =  unname(x$test.out$test3sm["stat"]),
+                                                             df =  unname(x$test.out$test3sm["df"]),
+                                                             p_val = unname(x$test.out$test3sm["p_val"])))
 
-test3sm.details <- test3sm_Cm$details
-test3sm.signif <- filter(test3sm.details, p_val < 0.05)
+
+test3sm.overall.df <- data.frame(do.call(rbind, test3sm.overall))
 ```
 
 
 ```{r table_test3sm, echo=F, include=T}
-knitr::kable(test3sm.signif, 
+knitr::kable(test3sm.overall.df, 
              digits = 2,
-             col.names = c("Occasion", "Stat", "p val", "signed test", "test"),
-             caption = "Table 3. Significant results from Test3.sm, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
+             col.names = c("Community", "Stat", "df", "p val"),
+             caption = "Table 3. Results from Test3.sm, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
              table.attr = "style='width:30%;'")
 ```
 
@@ -237,21 +293,24 @@ knitr::kable(test3sm.signif,
 TEST2.CT tests the hypothesis that "there is no difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions.  
 
 ```{r test2ct, echo=F, include=F}
-# TEST2.CT tests the hypothesis that there is no difference in the probability of being 
-# recaptured at i+1 between those captured and not captured at occasion i, conditional 
-# on presence at both occasions.
+test2ct.overall <- lapply(test2ct_Cm, 
+                          FUN = function(x) out.list <- list(community  = x$community, 
+                                                             stat =  unname(x$test.out$test2ct["stat"]),
+                                                             df =  unname(x$test.out$test2ct["df"]),
+                                                             p_val = unname(x$test.out$test2ct["p_val"]),
+                                                             sign_test = unname(x$test.out$test2ct["sign_test"])))
 
-test2ct_Cm.details <- test2ct_Cm$details
-test2ct.signif <- filter(test2ct_Cm.details, p_val < 0.05)
+
+test2ct.overall.df <- data.frame(do.call(rbind, test2ct.overall))
 ```
 
 
 ```{r table_test2ct, echo=F, include=T}
-knitr::kable(test2ct.signif, 
+knitr::kable(test2ct.overall.df, 
              digits = 2,
-             col.names = c("Occasion", "DF", "Stat", 
-                           "p val", "signed test", "test"),
-             caption = "Table 4. Significant results from Test2.ct, which evaluates difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions",
+             col.names = c("Community", "stat", "df", 
+                           "p val", "signed test"),
+             caption = "Table 4. Results from Test2.ct, which evaluates difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions",
              table.attr = "style='width:30%;'")
 ```
 
@@ -266,28 +325,515 @@ TEST2.CL tests if there is no difference in the expected time of next capture be
 # the expected time of next recapture between the individuals captured and not captured at occasion i
 # conditional on presence at both occasions i and i+2. To date, this test has no ‘simple’ interpretation, but
 #it is a component test of the overall TEST2 fit statistic.
+test2cl.overall <- lapply(test2cl_Cm, 
+                          FUN = function(x) out.list <- list(community  = x$community, 
+                                                             stat =  unname(x$test.out$test2cl["stat"]),
+                                                             df =  unname(x$test.out$test2cl["df"]),
+                                                             p_val = unname(x$test.out$test2cl["p_val"])))
 
-test2cl_Cm.details <- test2cl_Cm$details
-test2cl.signif <- filter(test2cl_Cm.details, p_val < 0.05)
+
+test2cl.overall.df <- data.frame(do.call(rbind, test2cl.overall))
 ```
 
 
 ```{r table_test2cl, echo=F, include=T}
-knitr::kable(test2cl.signif, 
+knitr::kable(test2cl.overall.df, 
              digits = 2,
-             col.names = c("Occasion", "DF", "Stat", "p val", "test"),
-             caption = "Table 5. Significant results from Test2.cl, which evaluates the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t and t + 2",
+             col.names = c("Community", "Stat", "df", "p val"),
+             caption = "Table 5. Results from Test2.cl, which evaluates the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t and t + 2",
              table.attr = "style='width:30%;'")
 ```
 
-```{r}
+All tests indicate that all datasets passed the GOF tests. (except GNO, which resulted in some NAs...) - Look into this! 2020-12-10
+
+#### Model comparison
+
+##### BKS
+
+```{r model_comp_BKS, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BKS.rds"))
+
 model.table(Cm.results)
 ```
 
-According to AICc, the best one is Phi(tsm)p(time). But c-hat > 4 (4.75)!  This is better than before but, obviously, this isn't a great model... What to do? 
+According to AICc, the best one is Phi(dot)p(time).  
+
+##### BMA
+
+```{r model_comp_BMA, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BMA.rds"))
+
+model.table(Cm.results)
+```
+
+According to AICc, the best one is Phi(tsm)p(dot). Phi(tsm)p(sum_win), Phi(tsm)p(effort), and Phi(tsm)p(tsm) also were pretty close. First look at the best one and do model averaging later.  
+
+##### GNO
+
+```{r model_comp_GNO, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_GNO.rds"))
+
+model.table(Cm.results)
+```
+
+According to AICc, the best one is Phi(tsm)p(time) but Phi(dot)p(time) was a close second.  
 
 Look at the estimates:
 ```{r}
 Cm.results$Phi.tsm.p.t$results$real
 ```
 
+
+##### IES
+
+```{r model_comp_IES, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_IES.rds"))
+
+model.table(Cm.results)
+```
+
+According to AICc, the best one is Phi(tsm)p(time).  
+
+
+##### LSI
+
+```{r model_comp_LSI, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_LSI.rds"))
+
+model.table(Cm.results)
+```
+
+According to AICc, the best one is Phi(dot)p(time).  
+
+
+##### MUL
+
+```{r model_comp_MUL, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_MUL.rds"))
+
+model.table(Cm.results)
+```
+
+According to AICc, the best one is Phi(dot)p(dot) but four other models showed some possibility.  
+
+
+Survival rate estimate is pretty low... 
+
+##### PAO
+
+```{r model_comp_PAO, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PAO.rds"))
+
+model.table(Cm.results)
+```
+
+According to AICc, the best one is Phi(dot)p(time).  
+
+
+##### PLM
+
+```{r model_comp_PLM, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PLM.rds"))
+
+model.table(Cm.results)
+```
+
+According to AICc, the best one is Phi(tsm)p(time).  
+
+#### Parameter estimates
+
+Look at the estimates:
+
+##### BKS
+
+```{r parameter_estimates_BKS, echo=F, include=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BKS.rds"))
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_BKS.rds"))
+real.estimates <- Cm.results$Phi.dot.p.t$results$real
+
+data.0 <- Cm.inputs$CJS.data$data
+
+phats <- real.estimates[2:nrow(real.estimates), 
+                        c("estimate", "se", "lcl", "ucl")]
+
+phats$season <- colnames(data.0)[2:(ncol(data.0))]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "BKS")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_BKS.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_BKS, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_BKS.png"))
+```
+
+##### BMA
+
+```{r parameter_estimates_BMA, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BMA.rds"))
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_BMA.rds"))
+
+real.estimates <- Cm.results$Phi.tsm.p.dot$results$real
+
+#DO MODEL AVERAGING HERE.
+
+data.0 <- Cm.inputs$CJS.data$data
+
+phats <- real.estimates[3, c("estimate", "se", "lcl", "ucl")]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "BMA")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_BMA.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_BMA, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_BMA.png"))
+```
+
+
+##### GNO
+
+```{r parameter_estimates_GNO, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_GNO.rds"))
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_GNO.rds"))
+
+real.estimates <- Cm.results$Phi.tsm.p.t$results$real
+
+#MODEL AVERAGING HERE.
+
+data.0 <- Cm.inputs$CJS.data$data
+phats <- real.estimates[3:nrow(real.estimates), 
+                        c("estimate", "se", "lcl", "ucl")]
+
+phats$season <- colnames(data.0)[2:(ncol(data.0))]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "GNO")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_GNO.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_GNO, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_GNO.png"))
+```
+
+
+##### IES
+
+```{r parameter_estimates_IES, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_IES.rds"))
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_IES.rds"))
+
+real.estimates <- Cm.results$Phi.tsm.p.t$results$real
+
+data.0 <- Cm.inputs$CJS.data$data
+phats <- real.estimates[3:nrow(real.estimates), 
+                        c("estimate", "se", "lcl", "ucl")]
+
+phats$season <- colnames(data.0)[2:(ncol(data.0))]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "IES")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_IES.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_IES, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_IES.png"))
+```
+
+##### LSI
+
+```{r parameter_estimates_LSI, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_LSI.rds"))
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_LSI.rds"))
+
+real.estimates <- Cm.results$Phi.dot.p.t$results$real
+
+data.0 <- Cm.inputs$CJS.data$data
+phats <- real.estimates[2:nrow(real.estimates), 
+                        c("estimate", "se", "lcl", "ucl")]
+
+phats$season <- colnames(data.0)[2:(ncol(data.0))]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "LSI")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_LSI.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_LSI, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_LSI.png"))
+```
+
+##### MUL
+
+```{r parameter_estimates_MUL, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_MUL.rds"))
+
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_MUL.rds"))
+
+real.estimates <- Cm.results$Phi.dot.p.dot$results$real
+
+data.0 <- Cm.inputs$CJS.data$data
+phats <- real.estimates[2, c("estimate", "se", "lcl", "ucl")]
+
+#phats$season <- colnames(data.0)[2:(ncol(data.0))]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "MUL")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_MUL.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_MUL, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_MUL.png"))
+```
+
+Survival rate estimate is pretty low... 
+
+
+##### PAO
+
+```{r parameter_estimates_PAO, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PAO.rds"))
+
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_PAO.rds"))
+
+real.estimates <- Cm.results$Phi.dot.p.t$results$real
+
+data.0 <- Cm.inputs$CJS.data$data
+phats <- real.estimates[2:nrow(real.estimates), 
+                        c("estimate", "se", "lcl", "ucl")]
+
+phats$season <- colnames(data.0)[2:(ncol(data.0))]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "PAO")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_PAO.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_PAO, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_PAO.png"))
+```
+
+
+##### PLM
+
+```{r parameter_estimates_PLM, echo=F}
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PLM.rds"))
+
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_PLM.rds"))
+
+real.estimates <- Cm.results$Phi.tsm.p.t$results$real
+
+data.0 <- Cm.inputs$CJS.data$data
+phats <- real.estimates[3:nrow(real.estimates), 
+                        c("estimate", "se", "lcl", "ucl")]
+
+phats$season <- colnames(data.0)[2:(ncol(data.0))]
+
+n.caught <- colSums(data.0)
+
+#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
+Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
+                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
+  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
+         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
+         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
+         lcl2 = ifelse(lcl < 0, 0, lcl))
+
+# turn Nhats to NA when SE = 0 or SE > 1000
+Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+
+p.Nhats <- ggplot(data = Nhats.df) +
+  geom_point(aes(x = season, y = (Nhat))) +
+  geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "PLM")
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_PLM.png",
+         device = "png", dpi = 600)
+
+```
+
+
+```{r plot_Nhats_PLM, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_PLM.png"))
+```

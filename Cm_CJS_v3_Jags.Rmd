@@ -28,18 +28,6 @@ MCMC.params <- list(n.samples = 50000,
                     n.thin = 5,
                     n.chains = 5)
 
-```
-
-Bring in the data file and get ready for CJS
-
-```{r warning=F}
-#dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
-
-dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
-
-# Group by community and create CJS data for each community
-community.names <- levels(as.factor(dat.1.Cm$community))
-
 models <- list(list(ID = 1, name = "Model_CJS_Phidot_pdot.txt"),
                list(ID = 2, name = "Model_CJS_Phidot_pt.txt"),
                list(ID = 3, name = "Model_CJS_Phidot_pEffort.txt"),
@@ -53,15 +41,39 @@ models <- list(list(ID = 1, name = "Model_CJS_Phidot_pdot.txt"),
                list(ID = 11, name = "Model_CJS_PhiTSM_pt.txt"),
                list(ID = 12, name = "Model_CJS_PhiTSM_pEffort.txt"))
 
+
+```
+
+Bring in the data file and get ready for CJS
+
+```{r warning=F}
+#dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+
+dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+
+dat.1.Cm %>% 
+  select(ID, CCL) %>% 
+  na.omit() %>%
+  group_by(ID) %>%
+  summarise(min_CCL = min(CCL, na.rm = T)) %>% #-> tmp
+  filter(!is.infinite(min_CCL)) -> data.CCL
+
+# Group by community and create CJS data for each community
+community.names <- levels(as.factor(dat.1.Cm$community))
+
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
 k <- 2
+k1 <- k2 <- 1
+
 p.recap <- vector(mode = "numeric")
 community.names.used <- vector(mode = "character")
 
 for (k in 1:length(community.names)){
   
-  if (!file.exists(paste0("RData/CJS_Cm_jags_", community.names[k], ".rds"))){
+  if (!file.exists(paste0("RData/CJS_Cm_jags_M",
+                              models[[k1]]$ID, "_", 
+                              community.names[k], ".rds"))){
     dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k])
     CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
     n.GT2.cap <- length(which(rowSums(CJS.data$data) > 1))
@@ -75,6 +87,10 @@ for (k in 1:length(community.names)){
       delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
                                          as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
       # 
+      
+      data.CCL  %>% left_join(CH.1, by = "ID") %>%
+        select(min_CCL) -> cov.CCL
+
       # capture history
       CH <- as.matrix(CJS.data$data)
       
@@ -99,7 +115,8 @@ for (k in 1:length(community.names)){
                         T = ncol(CJS.data$data),
                         dt = c(0, delta.dates),
                         mean.K = 2000,
-                        m = m)
+                        m = m,
+                        x = as.vector(t(cov.CCL)))
       
       ## parameters to monitor - when this is changed, make sure to change
       ## summary statistics indeces at the end of this script. 
@@ -112,7 +129,6 @@ for (k in 1:length(community.names)){
                          CH.1 = CH.1,
                          jags.data = jags.data,
                          parameters.to.save = parameters,
-                         dp = dp,
                          run.date = Sys.Date())
       
       saveRDS(jags.input, 
@@ -121,7 +137,7 @@ for (k in 1:length(community.names)){
       for (k1 in 1:length(models)){
         # models need to change according to the output from Mark, or do we do 
         # a similar model selection process using Pareto K?
-        MCMC.params$model.file <- models[[k1]]$name
+        MCMC.params$model.file <- paste0("models/", models[[k1]]$name)
         
         jm <- jags(data = jags.data,
                    parameters.to.save= parameters,

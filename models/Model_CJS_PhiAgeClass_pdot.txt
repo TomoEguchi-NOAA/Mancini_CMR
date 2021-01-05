@@ -1,15 +1,22 @@
 # Cormack-Jolly-Seber model - p.179 on Kery and 
-# Schaub, with an individual-specific covariate on survival
-# and fixed capture probability
+# Schaub, with individual- and time-specific covariate on survival
 
 model {
   for (i in 1:nind){
-    logit(phi[i]) <- mu + beta * x[i] + epsilon[i]
-    epsilon[i] ~ dnorm(0, tau)
+     for (t in f[i]:(n.occasions-1)){
+         phi[i, t] <- gamma[m[i,t]]  
+     }
   }
 
-  #mean.phi ~ dbeta(5, 2) #unif(0,1)
-  mu <- log(mean.phi / (1 - mean.phi))
+  for (t in 1:T){
+    #p[t] ~ dbeta(5, 2)
+    N[t] <- n[t]/p[t]
+  }
+
+  for (u in 1:2){
+     gamma[u] ~ dbeta(5, 2)
+  }
+  
   beta ~ dnorm(0, 0.01)
   sigma ~ dunif(0, 3)
   tau <- pow(sigma, -2)
@@ -23,7 +30,7 @@ model {
     for (t in (f[i] + 1):n.occasions){
       # state process
       z[i,t] ~ dbern(mu1[i,t])
-      mu1[i,t] <- (phi[i] ^ dt[t]) * z[i, t-1]
+      mu1[i,t] <- (phi[i, t-1] ^ dt[t]) * z[i, t-1]
 
       # observation process
       y[i,t] ~ dbern(mu2[i,t])

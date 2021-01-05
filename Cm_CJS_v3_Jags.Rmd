@@ -17,8 +17,8 @@ library(lubridate)
 library(reshape)
 library(bayesplot)
 library(ggridges)
-library(RMark)
-library(R2ucare)
+# library(RMark)
+# library(R2ucare)
 
 source("Mancini_functions.R")
 save.fig <- F
@@ -40,6 +40,19 @@ dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
 # Group by community and create CJS data for each community
 community.names <- levels(as.factor(dat.1.Cm$community))
 
+models <- list(list(ID = 1, name = "Model_CJS_Phidot_pdot.txt"),
+               list(ID = 2, name = "Model_CJS_Phidot_pt.txt"),
+               list(ID = 3, name = "Model_CJS_Phidot_pEffort.txt"),
+               list(ID = 4, name = "Model_CJS_PhiAgeClass_pdot.txt"),
+               list(ID = 5, name = "Model_CJS_PhiAgeClass_pt.txt"),
+               list(ID = 6, name = "Model_CJS_PhiAgeClass_pEffort.txt"),
+               list(ID = 7, name = "Model_CJS_PhiMinCCL_pdot.txt"),
+               list(ID = 8, name = "Model_CJS_PhiMinCCL_pt.txt"),
+               list(ID = 9, name = "Model_CJS_PhiMinCCL_pEffort.txt"),
+               list(ID = 10, name = "Model_CJS_PhiTSM_pdot.txt"),
+               list(ID = 11, name = "Model_CJS_PhiTSM_pt.txt"),
+               list(ID = 12, name = "Model_CJS_PhiTSM_pEffort.txt"))
+
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
 k <- 2
@@ -58,26 +71,6 @@ for (k in 1:length(community.names)){
       community.names.used[c + 1] <- community.names[k]
       CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
       
-      # # using R2ucare::group_data to combine CHs
-      # CH.2 <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
-      # 
-      # # need to count how many capture events occurred per season
-      # dat.1.Cm.community %>% select(season, "DATE") %>% 
-      #   group_by(season) %>% #-> tmp3
-      #   summarise(effort = n_distinct(DATE)) -> effort.season
-      # 
-      # # capture history
-      # tmp <- apply(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), 
-      #              MARGIN = 2,
-      #              FUN = paste0)
-      # 
-      # CH <- unite(data.frame(tmp),
-      #             col = "ch",
-      #             sep = "")
-      # 
-      # CH$freq <- CH.2$effY
-      # 
-      # # capture dates and difference in years
       cap.dates <- paste0(colnames(CJS.data$data), "-01")
       delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
                                          as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
@@ -91,18 +84,15 @@ for (k in 1:length(community.names)){
       
       # find the first capture date
       get.first <- function(x) min(which(x != 0))
-      f <- apply(CH, 1, get.first)
+      first.cap <- apply(CH, 1, get.first)
       
-      MCMC.params$model.file <- "models/Model_CJS_Phidot_pt.txt"
-      
-      first.cap <- jags.data$f
       m <- matrix(data = 2, nrow = nrow(CH), ncol = ncol(CH))
-      for (k in 1:nrow(m)){
-        m[k, first.cap[k]] <- 1
+      for (k2 in 1:nrow(m)){
+        m[k2, first.cap[k2]] <- 1
       }
       
       jags.data <- list(y = CH, 
-                        f = f, 
+                        f = first.cap, 
                         nind = nInd, 
                         n.occasions = dim(CH)[2],
                         n = ns, 
@@ -112,44 +102,44 @@ for (k in 1:length(community.names)){
                         m = m)
       
       ## parameters to monitor - when this is changed, make sure to change
-      ## summary statistics indices at the end of this script. 
-      parameters <- c("gamma", "p", "N", "prop.trans", 
-                      "mu_N", "sigma_N", "r", "K",
+      ## summary statistics indeces at the end of this script. 
+      parameters <- c("beta", "gamma", "p", "N", "prop.trans", 
+                      "mu_N", "sigma_N", "r", "K", "sigma_logitP",
                       "deviance", "loglik")
       
-      jm <- jags(data = jags.data,
-                 #inits = inits,
-                 parameters.to.save= parameters,
-                 model.file = MCMC.params$model.file,
-                 n.chains = MCMC.params$n.chains,
-                 n.burnin = MCMC.params$n.burnin,
-                 n.thin = MCMC.params$n.thin,
-                 n.iter = MCMC.params$n.samples,
-                 DIC = T, 
-                 parallel=T)
+      jags.input <- list(raw.data = dat.1.Cm.community,
+                         CJS.data = CJS.data,
+                         CH.1 = CH.1,
+                         jags.data = jags.data,
+                         parameters.to.save = parameters,
+                         dp = dp,
+                         run.date = Sys.Date())
       
-      out.list <- list(jags.out = jm.PhiTSM.pt.N.logistic,
-                       jags.data = jags.data)
+      saveRDS(jags.input, 
+              file = paste0("RData/CJS_Cm_jags_input_", community.names[k], ".rds"))        
       
-      saveRDS(out.list, 
-              file = paste0("RData/CJS_Cm_jags_", community.names[k], ".rds"))
+      for (k1 in 1:length(models)){
+        # models need to change according to the output from Mark, or do we do 
+        # a similar model selection process using Pareto K?
+        MCMC.params$model.file <- models[[k1]]$name
+        
+        jm <- jags(data = jags.data,
+                   parameters.to.save= parameters,
+                   model.file = MCMC.params$model.file,
+                   n.chains = MCMC.params$n.chains,
+                   n.burnin = MCMC.params$n.burnin,
+                   n.thin = MCMC.params$n.thin,
+                   n.iter = MCMC.params$n.samples,
+                   DIC = T, 
+                   parallel=T)
+        
+        saveRDS(jm, 
+                file = paste0("RData/CJS_Cm_jags_M",
+                              models[[k1]]$ID, "_", 
+                              community.names[k], ".rds"))
+        
+      }
       
-      
-      Cm.CJS.input <- list(raw.data = dat.1.Cm.community,
-                           CJS.data = CJS.data,
-                           CH.1 = CH.1,
-                           CH.R2ucare = CH.2,
-                           effort = effort.season,
-                           CH = CH,
-                           delta.dates = delta.dates,
-                           dp = dp,
-                           ddl = ddl,
-                           run.date = Sys.Date())
-      
-      saveRDS(Cm.results, 
-              file = paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))
-      saveRDS(Cm.CJS.input, 
-              file = paste0("RData/CJS_Cm_RMark_input_", community.names[k], ".rds"))
       c <- c + 1
     } else {
       print(paste("Commuinity", community.names[k], 
@@ -164,8 +154,6 @@ for (k in 1:length(community.names)){
   
 }
 
-# clean up Mark output files because results are saved in .rds files. Second thought... some results (e.g., c-hat) are not available in RMark output. So, I'll keep them. Second second thought - chat can be computed from overall CJS results (R2ucare) - chi2/df. So, I remove them.
-cleanup(ask = F)
 ```
 
 Of ```r length(community.names)``` communities, only ```r length(community.names.used)``` communities contained had sufficient recaptures. Data for  ```r length(community.names) - length(community.names.used)```  communities were not used in the following analysis. 

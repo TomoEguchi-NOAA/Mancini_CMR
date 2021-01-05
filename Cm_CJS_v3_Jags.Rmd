@@ -157,7 +157,7 @@ for (k in 1:length(community.names)){
         
       }
     }
-      c <- c + 1
+    c <- c + 1
   } else {
     print(paste("Commuinity", community.names[k], 
                 "did not have sufficient recapture probability (p < 0.05)."))

@@ -119,6 +119,7 @@ for (k in 1:length(community.names)){
     ## summary statistics indeces at the end of this script. 
     parameters <- c("beta", "gamma", "p", "N", "prop.trans", 
                     "mu_N", "sigma_N", "r", "K", "sigma_logitP",
+                    "mu", "mu.p", "beta.p",
                     "deviance", "loglik")
     
     jags.input <- list(raw.data = dat.1.Cm.community,
@@ -128,8 +129,9 @@ for (k in 1:length(community.names)){
                        parameters.to.save = parameters,
                        run.date = Sys.Date())
     
-    saveRDS(jags.input, 
-            file = paste0("RData/CJS_Cm_jags_input_", community.names[k], ".rds"))        
+    if (!file.exists(paste0("RData/CJS_Cm_jags_input_", community.names[k], ".rds")))
+      saveRDS(jags.input, 
+              file = paste0("RData/CJS_Cm_jags_input_", community.names[k], ".rds"))        
     
     for (k1 in 1:length(models)){
       # models need to change according to the output from Mark, or do we do 
@@ -154,6 +156,8 @@ for (k in 1:length(community.names)){
                 file = paste0("RData/CJS_Cm_jags_M",
                               models[[k1]]$ID, "_", 
                               community.names[k], ".rds"))
+        
+        rm(list = c("jm"))
         
       }
     }

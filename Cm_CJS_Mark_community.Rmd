@@ -101,7 +101,7 @@ mark.table$Model <- paren2bracket(mark.table$model)
 
 knitr::kable(mark.table %>% select(ID, Phi, p, Model) %>% arrange(by = as.numeric(ID)), 
              digits = 2,
-             caption = "Table 1. Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates constant.",
+             caption = "Table 1. Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates a constant.",
              table.attr = "style='width:30%;'")
 ```
 
@@ -110,7 +110,7 @@ Abundance was estimated using the Horviz-Thompson estimator.
 Analyses were conducted using the maximum likelihood approach using Mark (White and Cooch Yr) through RMark (v. ```r packageVersion("RMark")```, Laake 2013). 
 
 ## Results
-Of ```r length(community.names)``` communities, only ```r length(community.names.used)``` communities contained had sufficient recaptures. Data for  ```r length(community.names) - length(community.names.used)```  communities were not used in the following analysis. Goodness of fit of CJS models was examined for each study area. Results from each community are provided separately in the following sections.
+Of ```r length(community.names)``` communities, only ```r length(community.names.used)``` communities contained sufficient recaptures. Data for  ```r length(community.names) - length(community.names.used)```  communities were not used in the following analysis. Goodness of fit of CJS models was examined for each study area. Results from each community are provided separately in the following sections.
 
 ### Goodness of fit
 
@@ -269,7 +269,7 @@ knitr::kable(test2cl.overall.df,
              table.attr = "style='width:30%;'")
 ```
 
-All tests indicate that all datasets passed the GOF tests. (except GNO, which resulted in some NAs...) - Look into this! 2020-12-10
+All tests indicate that almost all datasets passed the GOF tests. (except GNO, which resulted in some NAs... and PAO Test2.ct) - Look into these! 2020-12-10
 
 For all following analyses, estimated capture probabilities that were less than 0.001 were considered unreliable and eliminated. 
 

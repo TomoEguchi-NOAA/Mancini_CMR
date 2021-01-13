@@ -48,11 +48,11 @@ do_analysis <- function(dp, ddl)
   
   # run all all models and return as a list with class marklist
   results <- mark.wrapper(model.list = cml,
-                          type = "CJS",
-                          data=dp,
-                          ddl=ddl,
-                          output=FALSE,
-                          silent=TRUE)
+                          #type = "CJS",   # UNNECESSARY LINE.
+                          data = dp,
+                          ddl = ddl,
+                          output = FALSE,
+                          silent = TRUE)
   return(results)
 }
 
@@ -167,10 +167,10 @@ ddl$Phi <- merge_design.covariates(ddl$Phi, df = sum_win)
 # When age = 0, it is the first time turtles were caught group(1)
 # all others are group(2), which are recaptures. 
 ddl$Phi$tsm <- 1
-ddl$Phi$tsm[ddl$Phi$age == 0] <- 2
+ddl$Phi$tsm[ddl$Phi$age != 0] <- 2  # it used to be == 0. Doesn't look right
 
 ddl$p$tsm <- 1
-ddl$p$tsm[ddl$p$age == 0] <- 2
+ddl$p$tsm[ddl$p$age != 0] <- 2    # it used to be == 0. Doesn't look right
 
 cm.results <- do_analysis(dp = dp, ddl = ddl)
 
@@ -182,7 +182,9 @@ Compare results using AICc:
 model.table(cm.results)
 ```
 
-According to AICc, the best one is Phi(tsm)p(time). But c-hat > 4!  This is better than before but, obviously, this isn't a great model... What to do? 
+To look at the output (if I haven't deleted the output), use cm.results\$Phi.tsm.p.t\$output to find which output file markXXX contains the results. 
+
+According to AICc, the best one is Phi(tsm)p(time). But c-hat > 5!  This is better than before but, obviously, this isn't a great model... What to do? 
 
 Look at the estimates:
 ```{r}
@@ -195,12 +197,11 @@ export.MARK(dp,
             project.name = "Mancini_Cm", 
             model = cm.results$Phi.tsm.p.t, 
             replace = T, 
-            chat = 4.75)
+            chat = 5.35)    # from the output file (mark022.out). 
 ```
 
+THIS HAS NOT BEEN COMPLETED - CAN'T DO THIS IN LINUX:
 Median c-hat test returned semi-acceptable results of estimated c-hat = 1.xxx, with 95%CI = ().  
-
-
 
 
 Release output is similar to what I find below from R2ucare.
@@ -242,7 +243,7 @@ test3sr.details <- test3sr_Cm$details
 filter(test3sr.details, p_val < 0.05)
 ```
 
-Occasions 3, 5, 14, 23, 25, 30, and 31 were "rejected" at alpha = 0.05.  If we lower the alpha value to be 0.01, only two (3 and 23) were problematic.  Still, the entire test was rejected.  TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." We probalby had more (I'm assuming this from signed_test values...) seen after these occasions than expected.  Could this mean that these seasons included individuals that were "more" residents than from other seasons? 
+Occasions 3, 14, 23, 25, 26, 30, 31, and 35 were "rejected" at alpha = 0.05.  If we lower the alpha value to be 0.01, only one (3) was problematic.  Still, the entire test was rejected.  TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." We probalby had more (I'm assuming this from signed_test values...) seen after these occasions than expected.  Could this mean that these seasons included individuals that were "more" residents than from other seasons? 
 
 TEST3.SM, on the other hand, looks at individuals who were seen again.  "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i). So, let's take a look at that result.
 
@@ -251,7 +252,7 @@ test3sm.details <- test3sm_Cm$details
 filter(test3sm.details, p_val < 0.05)
 ```
 
-There are 3 occasions that violated the assumptions; 4, 7, and 36.  The 7th and 36th occasions seem to have weird output with no statistics computed for them.  Why would df = 0?  
+There are 4 occasions that violated the assumptions; 4, 7, 15, and 37.  The 7th and 37th occasions seem to have weird output with no statistics computed for them.  Why would df = 0?  
 
 To make a comparison, I look at an occasion that passed the test:
 
@@ -350,9 +351,11 @@ It's possible that using the other criteria, such as median c-hat and other GOF 
 
 The estimated proportion of residents can be computed from the two survival rates:
 ```{r}
-p.residents <- cm.results$Phi.tsm.p.t$results$real$estimate[1]/cm.results$Phi.tsm.p.t$results$real$estimate[2]
+real.estimates <- cm.results$Phi.tsm.p.t$results$real %>% rownames_to_column("parameter")
+
+p.residents <- real.estimates$estimate[1]/real.estimates$estimate[2]
   
-phats <- cm.results$Phi.tsm.p.t$results$real$estimate[3:38]
+phats <- real.estimates$estimate[grep("p", real.estimates$parameter)]
 n.caught <- colSums(CJS.data$data)
 Nhats <- (n.caught[2:length(n.caught)]/phats) * p.residents
 ```

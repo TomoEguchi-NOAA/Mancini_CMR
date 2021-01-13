@@ -36,7 +36,7 @@ community.names <- levels(as.factor(dat.1.Cm$community))
 
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
-k <- 18
+k <- 1
 p.recap <- vector(mode = "numeric")
 community.names.used <- vector(mode = "character")
 
@@ -103,7 +103,7 @@ for (k in 1:length(community.names)){
       ddl$p <- merge_design.covariates(ddl$p, df = sum_win)
       
       # summer/winter affects survival (maybe)
-      sum_win <- data.frame(sum_win = unlist(ifelse(tmp3 == "08", "summer", "winter")) [1:length(levels(ddl$p$time))],
+      sum_win <- data.frame(sum_win = unlist(ifelse(tmp3 == "08", "summer", "winter")) [1:length(levels(ddl$Phi$time))],
                             time = as.factor(begin.year + cumsum(c(0, delta.dates[1:(length(delta.dates)-1)]))))
       
       ddl$Phi <- merge_design.covariates(ddl$Phi, df = sum_win)
@@ -112,10 +112,10 @@ for (k in 1:length(community.names)){
       # When age = 0, it is the first time turtles were caught group(1)
       # all others are group(2), which are recaptures. 
       ddl$Phi$tsm <- 1
-      ddl$Phi$tsm[ddl$Phi$age == 0] <- 2
+      ddl$Phi$tsm[ddl$Phi$age != 0] <- 2  # it used to be == 0. Doesn't look right
       
       ddl$p$tsm <- 1
-      ddl$p$tsm[ddl$p$age == 0] <- 2
+      ddl$p$tsm[ddl$p$age != 0] <- 2      # same here. used to be == 0
       
       Cm.results <- do_analysis(dp = dp, ddl = ddl)
       

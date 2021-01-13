@@ -56,7 +56,7 @@ community.names <- levels(as.factor(dat.1.Cm$community))
 Communities with small proportions (< 0.05) of recaptures, i.e., the number of individuals caught more than once in the total number of individuals, were excluded from the analysis because of insufficient numbers of recaptures. 
 
 ```{r RMark, echo=FALSE, include=T}
-# Analyses were completed in Cm_CJS_v3_Mark.Rmd
+# Analyses were completed in Cm_CJS_v3_Mark_community.Rmd
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
 k <- 18
@@ -281,7 +281,7 @@ For this study area, the best model was a constant survival and time-dependent c
 ```{r model_comp_BKS, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BKS.rds"))
 
-BKS.models.df <- model.table(Cm.results) %>% select(Phi, p, model, DeltaAICc) %>% 
+BKS.models.df <- model.table(Cm.results) %>% select(model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
 
@@ -289,26 +289,37 @@ BKS.models.df <- model.table(Cm.results) %>% select(Phi, p, model, DeltaAICc) %>
 ```{r table_models_BKS, echo=F, include=T}
 knitr::kable(BKS.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
+             col.names = c("model", "DeltaAICc"),
              caption = "Table 7. Model comparison for community BKS",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_BKS, echo=F, include=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BKS.rds"))
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_BKS.rds"))
-real.estimates <- Cm.results$Phi.dot.p.t$results$real
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
 data.0 <- Cm.inputs$CJS.data$data
 
-phats <- real.estimates[2:nrow(real.estimates), 
-                        c("estimate", "se", "lcl", "ucl")]
+phats <- real.estimates[grep("p", real.estimates$parameter),]
 
 phats[which(phats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
 phats$season <- colnames(data.0)[2:(ncol(data.0))]
 
 n.caught <- colSums(data.0)
+
+model.averaged.Phi <- model.average(Cm.results, parameter = "Phi")
+
+# The parameter IDs match with those from model fit.
+phi.dot.pt <- Cm.results$Phi.dot.p.t
+phi.tsm.pt <- Cm.results$Phi.tsm.p.t
+
+phi.dot.pt.params.ID <- phi.dot.pt$simplify$pim.translation
+phi.dot.pt.params.ID.label <- phi.dot.pt$simplify$real.labels
+
+phi.tsm.pt.params.ID <- phi.tsm.pt$simplify$pim.translation
+phi.tsm.pt.params.ID.label <- phi.tsm.pt$simplify$real.labels
+
 
 #SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
 Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
@@ -339,24 +350,36 @@ if (save.fig)
 
 Using the best model, the survival rate was estimated to be ```r signif(real.estimates[1,"estimate"], 3)``` (SE = ```r signif(real.estimates[1, "se"], 3)```, 95% CI = [```r signif(real.estimates[1, "lcl"], 2)``` - ```r signif(real.estimates[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(phats$estimate, na.rm = T), 3)``` to ```r signif(max(phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(Nhats.df$Nhat, na.rm = T),2)``` to ```r signif(max(Nhats.df$Nhat, na.rm = T),2)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
+The second best model (phi[tsm]p[t]) indicated that the estimated SE of one of the survival rates was virtually zero. Consequently, I did not perform model averaging for this study site. 
 
 ```{r plot_Nhats_BKS, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_BKS.png"))
 ```
+
+##### Model averaging
+Because of the small $\delta$AIC values among the two best models (Table x), estimated survival and capture probabilities were averaged using model weights via the function model.average in RMark (REFs). 
+
+```{r BKS_model_average, echo=F, include=F}
+# Use RMark's "model.average"
+
+```
+
 
 #### BMA
 
 ```{r model_comp_BMA, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BMA.rds"))
 
-BMA.models.df <- model.table(Cm.results)%>% select(Phi, p, model, DeltaAICc) %>% 
+BMA.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
+
+
 
 ```{r table_models_BMA, echo=F, include=T}
 knitr::kable(BMA.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
+             col.names = c("Phi", "p", "model", "deltaAICc"),
              caption = "Table 7. Model comparison for community BKS",
              table.attr = "style='width:30%;'")
 ```

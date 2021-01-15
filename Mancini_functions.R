@@ -1,4 +1,28 @@
 
+extract.Nhats <- function(Cm.inputs, real.estimates){
+  data.0 <- Cm.inputs$CJS.data$data
+  
+  phats <- real.estimates[grep("p", real.estimates$parameter),]
+  
+  phats[which(phats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
+  phats$season <- colnames(data.0)[1:(ncol(data.0)-1)]
+  
+  n.caught <- colSums(data.0)
+  
+  model.averaged.Phi <- model.average(Cm.results, parameter = "Phi")
+  
+  Nhats.df <- data.frame(season = colnames(data.0)[1:(ncol(data.0)-1)],
+                         Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate) ) %>%
+    mutate(SE_Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate) * phats$se/phats$estimate,
+           #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+           #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+           lcl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  - 1.96 * SE_Nhat,
+           ucl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  + 1.96 * SE_Nhat,
+           lcl2 = ifelse(lcl < 0, 0, lcl))
+  
+  return(Nhats.df)
+}
+
 
 
 do_analysis <- function(dp, ddl)

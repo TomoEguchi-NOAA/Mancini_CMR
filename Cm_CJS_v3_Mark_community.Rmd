@@ -24,7 +24,7 @@ source("Mancini_functions.R")
 save.fig <- F
 ```
 
-Bring in the data file and get ready for CJS
+Bring in the data file and get ready for CJS. Some communities did not have large sample sizes (the number of captured turtles) in the starting phase. This caused some difficulties in estimating capture/recapture probabilities. So, after some frustrating days, I decided to remove these sampling periods, specifically for the beginning of each dataset. This had to be done manually. 
 
 ```{r warning=F}
 #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
@@ -36,20 +36,32 @@ community.names <- levels(as.factor(dat.1.Cm$community))
 
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
-k <- 1
+k <- 2
 p.recap <- vector(mode = "numeric")
 community.names.used <- vector(mode = "character")
 
 for (k in 1:length(community.names)){
   
   if (!file.exists(paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))){
-    
-    dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k])
+
+    dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k]) 
     CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
     n.GT2.cap <- length(which(rowSums(CJS.data$data) > 1))
     p.recap[k] <- n.GT2.cap/nrow(CJS.data$data)
     
     if (p.recap[k] > 0.05){
+      first.sample <- switch(community.names[k],
+                             "BKS" = "2015-01-01",
+                             "BMA" = "2001-08-01",
+                             "GNO" = "2002-01-01",
+                             "IES" = "2009-01-01",
+                             "LSI" = "2002-08-01",
+                             "MUL" = "2008-08-01",
+                             "PAO" = "2001-08-01",
+                             "PLM" = "2011-01-01")
+      
+      dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k] & DATE >= as.Date(first.sample))
+      CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
       #stop()
       community.names.used[c + 1] <- community.names[k]
       CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS

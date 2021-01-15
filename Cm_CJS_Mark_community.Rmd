@@ -299,16 +299,7 @@ knitr::kable(BKS.models.df,
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_BKS.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-data.0 <- Cm.inputs$CJS.data$data
-
-phats <- real.estimates[grep("p", real.estimates$parameter),]
-
-phats[which(phats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
-phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-model.averaged.Phi <- model.average(Cm.results, parameter = "Phi")
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 # The parameter IDs match with those from model fit.
 phi.dot.pt <- Cm.results$Phi.dot.p.t
@@ -322,14 +313,6 @@ phi.tsm.pt.params.ID.label <- phi.tsm.pt$simplify$real.labels
 
 
 #SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "SE_Nhat", "lcl", "ucl", "lcl2")] <- NA
@@ -379,37 +362,17 @@ BMA.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>%
 ```{r table_models_BMA, echo=F, include=T}
 knitr::kable(BMA.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "deltaAICc"),
-             caption = "Table 7. Model comparison for community BKS",
+             col.names = c("model", "deltaAICc"),
+             caption = "Table 7. Model comparison for community BMA",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_BMA, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BMA.rds"))
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_BMA.rds"))
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-real.estimates <- Cm.results$Phi.tsm.p.dot$results$real
-
-#DO MODEL AVERAGING HERE.
-
-data.0 <- Cm.inputs$CJS.data$data
-
-phats <- real.estimates[3, c("estimate", "se", "lcl", "ucl")]
-#phats[which(phats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
-#phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
@@ -439,47 +402,29 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_BMA.png"))
 ```{r model_comp_GNO, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_GNO.rds"))
 
-GNO.models.df <- model.table(Cm.results)%>% select(Phi, p, model, DeltaAICc) %>% 
+GNO.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
 
 ```{r table_models_GNO, echo=F, include=T}
 knitr::kable(GNO.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community BKS",
+             col.names = c("model", "DeltaAICc"),
+             caption = "Table 7. Model comparison for community GNO",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_GNO, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_GNO.rds"))
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_GNO.rds"))
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-real.estimates <- Cm.results$Phi.tsm.p.t$results$real
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 #MODEL AVERAGING HERE.
 
-data.0 <- Cm.inputs$CJS.data$data
-phats <- real.estimates[3:nrow(real.estimates), 
-                        c("estimate", "se", "lcl", "ucl")]
-
-phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
-
 # turn Nhats to NA when SE = 0 or SE > 1000
-Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 5000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = (Nhat))) +
@@ -506,45 +451,27 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_GNO.png"))
 ```{r model_comp_IES, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_IES.rds"))
 
-IES.models.df <- model.table(Cm.results)%>% select(Phi, p, model, DeltaAICc) %>% 
+IES.models.df <- model.table(Cm.results)%>% select( model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
 
 ```{r table_models_IES, echo=F, include=T}
 knitr::kable(IES.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community BKS",
+             col.names = c("model", "DeltaAICc"),
+             caption = "Table 7. Model comparison for community IES",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_IES, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_IES.rds"))
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_IES.rds"))
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-real.estimates <- Cm.results$Phi.tsm.p.t$results$real
-
-data.0 <- Cm.inputs$CJS.data$data
-phats <- real.estimates[3:nrow(real.estimates), 
-                        c("estimate", "se", "lcl", "ucl")]
-
-phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
-Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = (Nhat))) +
@@ -570,45 +497,27 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_IES.png"))
 ```{r model_comp_LSI, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_LSI.rds"))
 
-LSI.models.df <- model.table(Cm.results)%>% select(Phi, p, model, DeltaAICc) %>% 
+LSI.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
 
 ```{r table_models_LSI, echo=F, include=T}
 knitr::kable(LSI.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community BKS",
+             col.names = c("model", "DeltaAICc"),
+             caption = "Table 7. Model comparison for community LSI",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_LSI, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_LSI.rds"))
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_LSI.rds"))
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-real.estimates <- Cm.results$Phi.dot.p.t$results$real
-
-data.0 <- Cm.inputs$CJS.data$data
-phats <- real.estimates[2:nrow(real.estimates), 
-                        c("estimate", "se", "lcl", "ucl")]
-
-phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
-Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = (Nhat))) +
@@ -634,45 +543,27 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_LSI.png"))
 ```{r model_comp_MUL, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_MUL.rds"))
 
-MUL.models.df <- model.table(Cm.results)%>% select(Phi, p, model, DeltaAICc) %>% 
+MUL.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
 
 ```{r table_models_MUL, echo=F, include=T}
 knitr::kable(MUL.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community BKS",
+             col.names = c("model", "DeltaAICc"),
+             caption = "Table 7. Model comparison for community MUL",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_MUL, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_MUL.rds"))
-
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_MUL.rds"))
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-real.estimates <- Cm.results$Phi.dot.p.dot$results$real
-
-data.0 <- Cm.inputs$CJS.data$data
-phats <- real.estimates[2, c("estimate", "se", "lcl", "ucl")]
-
-#phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
-Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = (Nhat))) +
@@ -698,46 +589,27 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_MUL.png"))
 ```{r model_comp_PAO, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PAO.rds"))
 
-PAO.models.df <- model.table(Cm.results)%>% select(Phi, p, model, DeltaAICc) %>% 
+PAO.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
 
 ```{r table_models_PAO, echo=F, include=T}
 knitr::kable(PAO.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community BKS",
+             col.names = c("model", "DeltaAICc"),
+             caption = "Table 7. Model comparison for community PAO",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_PAO, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PAO.rds"))
-
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_PAO.rds"))
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-real.estimates <- Cm.results$Phi.dot.p.t$results$real
-
-data.0 <- Cm.inputs$CJS.data$data
-phats <- real.estimates[2:nrow(real.estimates), 
-                        c("estimate", "se", "lcl", "ucl")]
-
-phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
-Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 5000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = (Nhat))) +
@@ -764,46 +636,28 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_PAO.png"))
 ```{r model_comp_PLM, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PLM.rds"))
 
-PLM.models.df <- model.table(Cm.results)%>% select(Phi, p, model, DeltaAICc) %>% 
+PLM.models.df <- model.table(Cm.results)%>% select( model, DeltaAICc) %>% 
   mutate(model = paren2bracket(model))
 ```
 
 ```{r table_models_PLM, echo=F, include=T}
 knitr::kable(PLM.models.df, 
              digits = 2,
-             col.names = c("Phi", "p", "model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community BKS",
+             col.names = c("model", "DeltaAICc"),
+             caption = "Table 7. Model comparison for community PLM",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_PLM, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_PLM.rds"))
-
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_PLM.rds"))
 
-real.estimates <- Cm.results$Phi.tsm.p.t$results$real
+real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-data.0 <- Cm.inputs$CJS.data$data
-phats <- real.estimates[3:nrow(real.estimates), 
-                        c("estimate", "se", "lcl", "ucl")]
-
-phats$season <- colnames(data.0)[2:(ncol(data.0))]
-
-n.caught <- colSums(data.0)
-
-#SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
-Nhats.df <- data.frame(season = colnames(data.0)[2:(ncol(data.0))],
-                       Nhat = (n.caught[2:length(n.caught)]/phats$estimate) ) %>%
-  mutate(SE_Nhat = (n.caught[2:length(n.caught)]/phats$estimate) * phats$se/phats$estimate,
-         #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-         #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-         lcl = (n.caught[2:length(n.caught)]/phats$estimate)  - 1.96 * SE_Nhat,
-         ucl = (n.caught[2:length(n.caught)]/phats$estimate)  + 1.96 * SE_Nhat,
-         lcl2 = ifelse(lcl < 0, 0, lcl))
+Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
-Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
+#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
 p.Nhats <- ggplot(data = Nhats.df) +
   geom_point(aes(x = season, y = (Nhat))) +

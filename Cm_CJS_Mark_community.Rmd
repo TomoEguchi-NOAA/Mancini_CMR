@@ -37,13 +37,13 @@ paren2bracket <- function(df.in){
 
 To estimate survival rate and abundance of green turtles, Cormack-Jolly-Seber (CJS) models were fitted to the capture-recapture dataset for green turtles. Results indicated that apparent changes in abundance might have been caused by sampling inequalities among study sites. In order to remove the inequalities, CJS models were fitted to data from each study site independently. This was justified by the lack of movements by turtles among the study sites. 
 
-Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (phi) and capture/recapture probability (p).  The abundance may be estimated through the Horvitz-Thompson estimator, where the number of captured individuals per temporal sampling period is divided by the estimated capture probability for that time period. The estimated survival rate should be considered as an apparent survival rate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
+Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (phi) and capture/recapture probability (p).  The abundance may be estimated through the Horviz-Thompson estimator, where the number of captured individuals per temporal sampling period is divided by the estimated capture probability for that time period. The estimated survival rate should be considered as an apparent survival rate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
 
 The basic model can be extended to accommodate various modifications, such as time-dependent survival rates, time-dependent capture probability, covariate-dependent survival rates and capture probabilities.
 
 ## Methods
 
-Capture-recapture data of green turtles were separated into study areas and CJS models were fitted using Mark via RMark. 
+Capture-recapture data of green turtles were separated into study areas and CJS models were fitted using Mark via RMark. Analyses were done in Cm_CJS_v3_Mark_community.Rmd. Some capture events in the beginning of each time series were deleted because of the small numbers of captures (not all). Beginning dates for each dataset are listed in the .Rmd file. 
 
 ```{r data, echo=FALSE, include=T}
 
@@ -84,14 +84,16 @@ for (k in 1:length(community.names)){
 
 mark.table <- model.table(Cm.results[[1]]) %>% rownames_to_column(var = "ID")
 # 
-mark.table %>% select(ID, model, DeltaAICc) -> mark.table.2
 
 ```
 
 
 Capture history data from each study area with sufficient numbers of recaptures were pooled by sampling seasons (summer and winter). In other words, multiple captures within each season were treated as one capture. 
 
-I considered several possible CJS models for this analysis. For survival rates, they were treated as either constant, affected by transients (time-since-marking; TSM), a function of age class (immature < 81.6 cm CCL) or a function of size (CCL) at first capture. For capture probabilities, they were treated as either constant, time dependent, different between the first and subsequent captures (trap response), or a function of effort. A total of 14 models were fitted to the data (Table 1).
+I considered several possible CJS models for this analysis. For survival rates, they were treated as either constant or affected by transients (time-since-marking; TSM). For capture probabilities, they were treated as either constant, time dependent, different between the first and subsequent captures (trap response), different between summer and winter, or a function of effort. A total of 14 models were fitted to the data (Table 1).
+
+I decided not to use individual covariates because there were many unobserved (295 NAs for SCL).
+
 
 ```{r model_defs, echo=F, include=T}
 
@@ -99,7 +101,7 @@ I considered several possible CJS models for this analysis. For survival rates, 
 # tmp <- gsub(")", "]", tmp, fixed = T)
 mark.table$Model <- paren2bracket(mark.table$model)
 
-knitr::kable(mark.table %>% select(ID, Phi, p, Model) %>% arrange(by = as.numeric(ID)), 
+knitr::kable(mark.table %>% select(ID, Model, DeltaAICc) %>% arrange(by = as.numeric(ID)), 
              digits = 2,
              caption = "Table 1. Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates a constant.",
              table.attr = "style='width:30%;'")

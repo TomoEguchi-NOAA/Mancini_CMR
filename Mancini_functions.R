@@ -3,6 +3,7 @@ extract.Nhats <- function(Cm.inputs, real.estimates){
   data.0 <- Cm.inputs$CJS.data$data
   
   phats <- real.estimates[grep("p", real.estimates$parameter),]
+  phihats <- real.estimates[grep("Phi", real.estimates$parameter),]
   
   phats[which(phats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
   phats$season <- colnames(data.0)[1:(ncol(data.0)-1)]
@@ -20,7 +21,11 @@ extract.Nhats <- function(Cm.inputs, real.estimates){
            ucl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  + 1.96 * SE_Nhat,
            lcl2 = ifelse(lcl < 0, 0, lcl))
   
-  return(Nhats.df)
+  out.list <- list(phats = phats,
+                   Nhats = Nhats.df,
+                   Phihats = phihats,
+                   Phihat_avg = model.averaged.Phi)
+  return(out.list)
 }
 
 

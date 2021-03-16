@@ -134,6 +134,7 @@ for (k in 1:length(community.names)){
       Cm.results <- do_analysis(dp = dp, ddl = ddl)
       
       Cm.CJS.input <- list(raw.data = dat.1.Cm.community,
+                           first.sample.date = first.sample,
                            CJS.data = CJS.data,
                            CH.1 = CH.1,
                            CH.R2ucare = CH.2,
@@ -162,7 +163,7 @@ for (k in 1:length(community.names)){
   
 }
 
-# clean up Mark output files because results are saved in .rds files. Second thought... some results (e.g., c-hat) are not available in RMark output. So, I'll keep them. Second second thought - chat can be computed from overall CJS results (R2ucare) - chi2/df. So, I remove them.
+# clean up Mark output files because results are saved in .rds files. Second thought... some results (e.g., c-hat) are not available in RMark output. So, I'll keep them. Second second thought - c-hat can be computed from overall CJS results (R2ucare) - chi2/df. So, I remove them.
 cleanup(ask = F)
 ```
 

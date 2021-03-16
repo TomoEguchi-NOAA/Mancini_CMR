@@ -2,13 +2,14 @@
 title: "Capture mark recapture analysis of green turtles"
 author: "Tomo Eguchi"
 date: "1/8/2021"
-output: html_document
+output: word_document
 ---
 
 ```{r setup, include=FALSE, echo=FALSE}
+rm(list=ls())
+
 knitr::opts_chunk$set(echo = TRUE)
 
-rm(list=ls())
 library(jagsUI)
 library(tidyverse)
 library(lubridate)
@@ -20,6 +21,8 @@ library(R2ucare)
 
 source("Mancini_functions.R")
 save.fig <- F
+fig.height <- 4
+fig.width <- 6
 
 # a function to replace parentheses with brackets
 # With parentheses, table entries are read as TeX, resulting in subscripts
@@ -75,8 +78,10 @@ for (k in 1:length(community.names)){
     }
     
   if (file.exists(paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))){
-    Cm.results[[c+1]] <- readRDS(file = paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))
-    Cm.CJS.input[[c+1]] <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_", community.names[k], ".rds"))
+    Cm.results[[c+1]] <- readRDS(file = paste0("RData/CJS_Cm_RMark_", 
+                                               community.names[k], ".rds"))
+    Cm.CJS.input[[c+1]] <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_", 
+                                                 community.names[k], ".rds"))
       c <- c + 1
   } 
   
@@ -101,7 +106,7 @@ I decided not to use individual covariates because there were many unobserved (2
 # tmp <- gsub(")", "]", tmp, fixed = T)
 mark.table$Model <- paren2bracket(mark.table$model)
 
-knitr::kable(mark.table %>% select(ID, Model, DeltaAICc) %>% arrange(by = as.numeric(ID)), 
+knitr::kable(mark.table %>% select(ID, Model) %>% arrange(by = as.numeric(ID)), 
              digits = 2,
              caption = "Table 1. Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates a constant.",
              table.attr = "style='width:30%;'")
@@ -130,6 +135,7 @@ for (k in 1:length(community.names.used)){
   overall_Cm[[k]] <- list(community = community.names.used[k],
                           test.out = overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
                                                  freq = CH.Ucare$effY)) 
+  
   test3sr_Cm[[k]] <- list(community = community.names.used[k],
                           test.out = test3sr(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
                                              freq = CH.Ucare$effY)) 
@@ -273,12 +279,13 @@ knitr::kable(test2cl.overall.df,
 
 All tests indicate that almost all datasets passed the GOF tests. (except GNO, which resulted in some NAs... and PAO Test2.ct) - Look into these! 2020-12-10
 
-For all following analyses, estimated capture probabilities that were less than 0.001 were considered unreliable and eliminated. 
+For the following analyses, estimated capture probabilities that were less than 0.001 were considered unreliable and eliminated. 
+
+### Demographic parameter estimates
 
 #### BKS
 
-For this study area, the best model was a constant survival and time-dependent capture probabilities (phi(dot)p(time), Table 7). The second best model with $\delta$AICc = 1.45 (phi(tsm)p(time)) indicated survival may be a function of time-since-marking, which is an evidence of presence of transient animals.   
-
+For this study area, the best model was a constant survival and time-dependent capture probabilities (phi[.]p[time], Table 7). The second best model with $\delta$AICc = 1.45 (phi[tsm]p[time]) indicated survival may be a function of time-since-marking, which is an evidence of presence of transient animals.   
 
 ```{r model_comp_BKS, echo=F}
 Cm.results <- readRDS(file = paste0("RData/CJS_Cm_RMark_BKS.rds"))
@@ -292,34 +299,39 @@ BKS.models.df <- model.table(Cm.results) %>% select(model, DeltaAICc) %>%
 knitr::kable(BKS.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
+             row.names = F,
              caption = "Table 7. Model comparison for community BKS",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_BKS, echo=F, include=F}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "BKS")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_BKS.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 # The parameter IDs match with those from model fit.
-phi.dot.pt <- Cm.results$Phi.dot.p.t
-phi.tsm.pt <- Cm.results$Phi.tsm.p.t
+# phi.dot.pt <- Cm.results$Phi.dot.p.t
+# phi.tsm.pt <- Cm.results$Phi.tsm.p.t
 
-phi.dot.pt.params.ID <- phi.dot.pt$simplify$pim.translation
-phi.dot.pt.params.ID.label <- phi.dot.pt$simplify$real.labels
-
-phi.tsm.pt.params.ID <- phi.tsm.pt$simplify$pim.translation
-phi.tsm.pt.params.ID.label <- phi.tsm.pt$simplify$real.labels
-
+# phi.dot.pt.params.ID <- phi.dot.pt$simplify$pim.translation
+# phi.dot.pt.params.ID.label <- phi.dot.pt$simplify$real.labels
+# 
+# phi.tsm.pt.params.ID <- phi.tsm.pt$simplify$pim.translation
+# phi.tsm.pt.params.ID.label <- phi.tsm.pt$simplify$real.labels
 
 #SE.Nhats <- sqrt((n.caught[2:length(n.caught)]/phats$estimate)^2 * ((phats$se/phats$estimate)^2))  
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "SE_Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -329,26 +341,20 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_BKS.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
-Using the best model, the survival rate was estimated to be ```r signif(real.estimates[1,"estimate"], 3)``` (SE = ```r signif(real.estimates[1, "se"], 3)```, 95% CI = [```r signif(real.estimates[1, "lcl"], 2)``` - ```r signif(real.estimates[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(phats$estimate, na.rm = T), 3)``` to ```r signif(max(phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(Nhats.df$Nhat, na.rm = T),2)``` to ```r signif(max(Nhats.df$Nhat, na.rm = T),2)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
+There were ```r nrow(CJS.data$data)``` turtles in the dataset. However, the numbers of turtles caught per capture occasion before ```r Cm.inputs$first.sample.date``` were insufficient to include in CMR analyses and excluded. Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
+
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
 The second best model (phi[tsm]p[t]) indicated that the estimated SE of one of the survival rates was virtually zero. Consequently, I did not perform model averaging for this study site. 
 
-```{r plot_Nhats_BKS, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_BKS.png"))
 ```
-
-##### Model averaging
-Because of the small $\delta$AIC values among the two best models (Table x), estimated survival and capture probabilities were averaged using model weights via the function model.average in RMark (REFs). 
-
-```{r BKS_model_average, echo=F, include=F}
-# Use RMark's "model.average"
-
-```
-
 
 #### BMA
 
@@ -360,26 +366,31 @@ BMA.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>%
 ```
 
 
-
-```{r table_models_BMA, echo=F, include=T}
+```{r table_models_BMA, echo=F, include=T, warning=FALSE, message=FALSE}
 knitr::kable(BMA.models.df, 
              digits = 2,
              col.names = c("model", "deltaAICc"),
-             caption = "Table 7. Model comparison for community BMA",
+             row.names = F,
+             caption = "Model comparison for community BMA",
              table.attr = "style='width:30%;'")
 ```
 
 
 ```{r parameter_estimates_BMA, echo=F}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "BMA")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_BMA.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -389,13 +400,16 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_BMA.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
-Using the best model, the survival rate was estimated to be ```r signif(real.estimates[1,"estimate"], 3)``` (SE = ```r signif(real.estimates[1, "se"], 3)```, 95% CI = [```r signif(real.estimates[1, "lcl"], 2)``` - ```r signif(real.estimates[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(phats$estimate, na.rm = T), 3)``` to ```r signif(max(phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(Nhats.df$Nhat, na.rm = T),2)``` to ```r signif(max(Nhats.df$Nhat, na.rm = T),2)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
+The capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
 
-```{r plot_Nhats_BMA, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
+
+```{r plot_Nhats_BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_BMA.png"))
 ```
 
@@ -412,23 +426,29 @@ GNO.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>%
 knitr::kable(GNO.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community GNO",
+             row.names = F,
+             caption = "Table. Model comparison for community GNO",
              table.attr = "style='width:30%;'")
 ```
 
 
-```{r parameter_estimates_GNO, echo=F}
+```{r parameter_estimates_GNO, echo=F, warning=FALSE, message=FALSE}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "GNO")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_GNO.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 #MODEL AVERAGING HERE.
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 5000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -438,15 +458,19 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_GNO.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
 
-```{r plot_Nhats_GNO, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_GNO.png"))
 ```
 
+There were ```r nrow(CJS.data$data)``` turtles in the dataset. However, the numbers of turtles caught before ```r Cm.inputs$first.sample.date``` were insufficient to include in CMR analyses and excluded. Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
+
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
 #### IES
 
@@ -461,21 +485,27 @@ IES.models.df <- model.table(Cm.results)%>% select( model, DeltaAICc) %>%
 knitr::kable(IES.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community IES",
+             row.names = F,
+             caption = "Table. Model comparison for community IES",
              table.attr = "style='width:30%;'")
 ```
 
 
-```{r parameter_estimates_IES, echo=F}
+```{r parameter_estimates_IES, echo=F, warning=FALSE, message=FALSE}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "IES")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_IES.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -485,14 +515,19 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_IES.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
 
-```{r plot_Nhats_IES, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_IES.png"))
 ```
+
+There were ```r nrow(CJS.data$data)``` turtles in the dataset. However, the numbers of turtles caught before ```r Cm.inputs$first.sample.date``` were insufficient to include in CMR analyses and excluded. Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
+
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 2)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
 #### LSI
 
@@ -507,21 +542,27 @@ LSI.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>%
 knitr::kable(LSI.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community LSI",
+             row.names = F,
+             caption = "Table. Model comparison for community LSI",
              table.attr = "style='width:30%;'")
 ```
 
 
-```{r parameter_estimates_LSI, echo=F}
+```{r parameter_estimates_LSI, echo=F, message=FALSE, warning=FALSE}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "LSI")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_LSI.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -531,14 +572,19 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_LSI.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
 
-```{r plot_Nhats_LSI, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_LSI.png"))
 ```
+
+There were ```r nrow(CJS.data$data)``` turtles in the dataset. However, the numbers of turtles caught before ```r Cm.inputs$first.sample.date``` were insufficient to include in CMR analyses and excluded. Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
+
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 2)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
 #### MUL
 
@@ -553,21 +599,27 @@ MUL.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>%
 knitr::kable(MUL.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community MUL",
+             row.names = F,
+             caption = "Table. Model comparison for community MUL",
              table.attr = "style='width:30%;'")
 ```
 
 
-```{r parameter_estimates_MUL, echo=F}
+```{r parameter_estimates_MUL, echo=F, message=FALSE, warning=FALSE}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "MUL")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_MUL.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -577,14 +629,19 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_MUL.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
 
-```{r plot_Nhats_MUL, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_MUL.png"))
 ```
+
+There were ```r nrow(CJS.data$data)``` turtles in the dataset. However, the numbers of turtles caught before ```r Cm.inputs$first.sample.date``` were insufficient to include in CMR analyses and excluded. Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
+
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 2)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
 #### PAO
 
@@ -595,25 +652,32 @@ PAO.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>%
   mutate(model = paren2bracket(model))
 ```
 
+
 ```{r table_models_PAO, echo=F, include=T}
 knitr::kable(PAO.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community PAO",
+             row.names = F,
+             caption = "Table. Model comparison for community PAO",
              table.attr = "style='width:30%;'")
 ```
 
 
-```{r parameter_estimates_PAO, echo=F}
+```{r parameter_estimates_PAO, echo=F, message=FALSE, warning=FALSE}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "PAO")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_PAO.rds"))
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 5000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -623,15 +687,19 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_PAO.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
 
-```{r plot_Nhats_PAO, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_PAO.png"))
 ```
 
+The capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
+
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
 #### PLM
 
@@ -646,22 +714,28 @@ PLM.models.df <- model.table(Cm.results)%>% select( model, DeltaAICc) %>%
 knitr::kable(PLM.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
-             caption = "Table 7. Model comparison for community PLM",
+             row.names = F,
+             caption = "Table. Model comparison for community PLM",
              table.attr = "style='width:30%;'")
 ```
 
 
-```{r parameter_estimates_PLM, echo=F}
+```{r parameter_estimates_PLM, echo=F, message=FALSE, warning=FALSE}
+dat.1.Cm.community <- filter(dat.1.Cm, community == "PLM")
+CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+n.occ <- ncol(CJS.data$data)
+n.caught <- colSums(CJS.data$data)
+
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_PLM.rds"))
 
 real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
 
-Nhats.df <- extract.Nhats(Cm.inputs, real.estimates)
+N.Phi.p.hats <- extract.Nhats(Cm.inputs, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
 
-p.Nhats <- ggplot(data = Nhats.df) +
+p.Nhats <- ggplot(data = N.Phi.p.hats$Nhats) +
   geom_point(aes(x = season, y = (Nhat))) +
   geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
@@ -671,11 +745,16 @@ p.Nhats <- ggplot(data = Nhats.df) +
 if (save.fig)
   ggsave(plot = p.Nhats, 
          filename = "figures/Cm_Nhats_PLM.png",
+         height = fig.height, width = fig.width,
          device = "png", dpi = 600)
 
 ```
 
 
-```{r plot_Nhats_PLM, echo=FALSE, cache=TRUE, fig.cap="Figure 5. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_PLM, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_PLM.png"))
 ```
+
+There were ```r nrow(CJS.data$data)``` turtles in the dataset. However, the numbers of turtles caught before ```r Cm.inputs$first.sample.date``` were insufficient to include in CMR analyses and excluded. Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.community$DATE)``` were used in the analysis. There were ```r n.occ``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)```. The number of captures per individual ranged from ```r min(Cm.inputs$CH$freq)``` to ```r max(Cm.inputs$CH$freq)``` with the median of ```r median(Cm.inputs$CH$freq)``` and the mean of ```r signif(mean(Cm.inputs$CH$freq), 3)```. 
+
+Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)```]). Estimated capture probabilities ranged from ```r signif(min(N.Phi.p.hats$phats$estimate, na.rm = T), 3)``` to ```r signif(max(N.Phi.p.hats$phats$estimate, na.rm = T), 3)```. Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r format(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).

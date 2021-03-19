@@ -20,7 +20,7 @@ model {
   }
 
   for (t in 1:T){
-     p[t] ~ dbeta(5, 2) 
+     #p[t] ~ dbeta(5, 2) 
      N[t] <- n[t]/p[t]
   }
   

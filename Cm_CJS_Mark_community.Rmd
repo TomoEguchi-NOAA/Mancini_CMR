@@ -18,6 +18,7 @@ library(bayesplot)
 library(ggridges)
 library(RMark)
 library(R2ucare)
+library(loo)
 
 source("Mancini_functions.R")
 save.fig <- F
@@ -355,6 +356,74 @@ The second best model (phi[tsm]p[t]) indicated that the estimated SE of one of t
 ```{r plot_Nhats_BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_BKS.png"))
 ```
+
+
+We also fitted the same model to the data using the Bayesian approach.
+
+```{r}
+
+
+loo.out[[c]] <- compute.LOOIC(loglik = jm$sims.list$loglik, 
+                                          MCMC.params = MCMC.params, 
+                                          data.vector = as.vector(jags.data$y))
+```
+
+
+```{r BKS_jags_phidot_pt, echo=FALSE, warning=FALSE, message=FALSE}
+jags_inputs <- readRDS(file = "RData/CJS_Cm_jags_input_BKS.rds")
+jags_output <- readRDS(file = "RData/CJS_Cm_jags_M2_BKS.rds")
+
+Nhat.df <- data.frame(season = names(jags_inputs$CJS.data$data),
+                      mean = jags_output$mean$N,
+                      low = jags_output$q2.5$N,
+                      high = jags_output$q97.5$N)
+
+p.Nhats <- ggplot(data = Nhat.df) + 
+  geom_point(aes(x = season, y = mean)) +
+  geom_errorbar(aes(x = season, ymin = low, ymax = high)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "BKS")
+
+if (save.fig)
+    ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_jags_BKS.png",
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+```
+
+```{r plot_Nhats_BKS_jags, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients using a Bayesian approach"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_jags_BKS.png"))
+```
+
+
+Also looked at the transient effect model in the Bayesian approach.
+
+```{r BKS_jags_phiTSM_pt, echo=FALSE, message=FALSE, warning=FALSE}
+jags_output <- readRDS(file = "RData/CJS_Cm_jags_M11_BKS.rds")
+
+Nhat.df <- data.frame(season = names(jags_inputs$CJS.data$data),
+                      mean = jags_output$mean$N,
+                      low = jags_output$q2.5$N,
+                      high = jags_output$q97.5$N)
+
+p.Nhats <- ggplot(data = Nhat.df) + 
+  geom_point(aes(x = season, y = mean)) +
+  geom_errorbar(aes(x = season, ymin = low, ymax = high)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = "BKS")
+
+if (save.fig)
+    ggsave(plot = p.Nhats, 
+         filename = "figures/Cm_Nhats_jags_phiTSM_pt_BKS.png",
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+```
+
+
 
 #### BMA
 

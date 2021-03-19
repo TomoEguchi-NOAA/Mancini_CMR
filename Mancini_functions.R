@@ -479,6 +479,38 @@ compute.LOOIC <- function(loglik, data.vector, MCMC.params){
   return(out.list)  
 }
 
+# extract looic and pareto k statistics. the first input (loo.out) should come from compute.LOOIC above. 
+pareto.looic.fcn <- function(loo.out, models){
+  pareto.k <- lapply(loo.out, 
+                     FUN = function(x) x$loo.out)
+  
+  # find maximum pareto k values
+  max.pareto.k <- unlist(lapply(pareto.k,
+                                FUN = function(x) max(x$diagnostics$pareto_k)))
+  
+  # find the models that have max(pareto k) < 0.7
+  good.models <- models[which(max.pareto.k < 0.7)]
+  good.models.pareto.k <- pareto.k[which(max.pareto.k < 0.7)]
+  
+  looic.esimates <- lapply(lapply(loo.out[which(max.pareto.k < 0.7)], 
+                                  FUN = function(x) x$loo.out),
+                           FUN = function(x) x$estimates)
+  
+  looic <- unlist(lapply(looic.esimates, 
+                         FUN = function(x) x["looic", "Estimate"]))
+  
+  loo.out.list <- lapply(loo.out[which(max.pareto.k < 0.7)], 
+                         FUN = function(x) x$loo.out)
+  
+  # calculate model weights
+  model.weights <- loo_model_weights(loo.out.list)
+  out.list <- list(model.weights = model.weights,
+                   looic = looic,
+                   good.models = good.models,
+                   good.models.pareto.k = good.models.pareto.k)
+}
+
+
 
 # Extracting posterior samples of deviance or any other variable from jags output:
 extract.samples <- function(varname, zm){

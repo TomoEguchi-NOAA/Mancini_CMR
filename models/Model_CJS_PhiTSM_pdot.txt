@@ -21,7 +21,7 @@ model {
 
   for (t in 1:T){
      #p[t] ~ dbeta(5, 2) 
-     N[t] <- n[t]/p[t]
+     N[t] <- n[t]/mean.p
   }
   
   for (u in 1:2){

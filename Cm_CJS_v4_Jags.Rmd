@@ -62,9 +62,6 @@ dat.1.Cm %>%
   summarise(min_CCL = min(CCL, na.rm = T)) %>% #-> tmp
   filter(!is.infinite(min_CCL)) -> data.CCL
 
-# Group by community and create CJS data for each community
-community.names <- levels(as.factor(dat.1.Cm$community))
-
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
 k <- 2
@@ -108,8 +105,7 @@ for (k in 1:length(community.names)){
                     T = ncol(CJS.data$data),
                     dt = c(0, delta.dates),
                     mean.K = 2000,
-                    m = m,
-                    x = as.vector(t(cov.CCL)))
+                    m = m)
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics index at the end of this script. 
@@ -131,7 +127,7 @@ for (k in 1:length(community.names)){
   
   # models need to change according to the output from Mark, or do we do 
   # a similar model selection process using Pareto K?
-  MCMC.params$model.file <- paste0("Model_CJS_", filter(models.MARK, 
+  MCMC.params$model.file <- paste0("models/Model_CJS_", filter(models.MARK, 
                                                         community == community.names[k])["model"],
                                    ".txt")
   

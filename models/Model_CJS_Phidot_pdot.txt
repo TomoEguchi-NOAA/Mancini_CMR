@@ -26,12 +26,12 @@ model {
       
       # observation process
       #mu2[i,t] <- ifelse(mean.p * z[i,t] < eps, eps, mean.p * z[i,t])
-      
+      mu2[i,t] <- mean.p * z[i,t]
       y[i,t] ~ dbern(mu2[i,t])
       
       # somehow the following line doesn't work... 
       # I think mu2 becomes zero and that causes the problem... 
-      loglik[i,t] <- logdensity.bern(y[i,t], mu2[i,t])
+      #loglik[i,t] <- logdensity.bern(y[i,t], mu2[i,t])
       
       #loglik[i,t] <- ifelse(y[i,t] == 1, log(mu2[i,t]), log(1-mu2[i,t]))
     }

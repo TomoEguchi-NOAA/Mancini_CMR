@@ -91,10 +91,13 @@ for (k in 1:length(community.names)){
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics index at the end of this script. 
-  parameters <- c("beta", "gamma", "p", "N", "prop.trans", 
-                  "mu_N", "sigma_N", "r", "K", "sigma_logitP",
-                  "mu", "mu1", "mu2", "mu.p", "beta.p",
+  parameters <- c("beta", "gamma", "N", "prop.trans", 
+                  "r", "K",  "beta.p",
                   "deviance")   # removed "loglik" because not doing LOOIC. 2021-03-26
+                # too many parameters are monitored so removing p for now. 2021-03-29 
+                # also removing "mu_N", "sigma_N","sigma_logitP",
+                # "mu", "mu1", "mu2", "mu.p",
+
   
   jags.input <- list(raw.data = dat.1.Cm.community,
                      CJS.data = CJS.data,

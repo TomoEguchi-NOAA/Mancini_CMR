@@ -28,7 +28,42 @@ extract.Nhats <- function(Cm.inputs, real.estimates){
   return(out.list)
 }
 
+extract.Nhats.jags <- function(Cm.inputs, real.estimates){
+  data.0 <- Cm.inputs$CJS.data$data
 
+  Nhats <- real.estimates[grep("N[", real.estimates$parameter, fixed = T),] %>%
+    transmute(parameter = parameter,
+              mean = mean,
+              sd = sd,
+              lcl = `2.5%`,
+              median = `50%`,
+              ucl = `97.5%`,
+              Rhat = Rhat,
+              season = colnames(data.0))
+  
+  Phihats <- real.estimates[grep("phi", real.estimates$parameter, fixed = T),] %>%
+    transmute(parameter = parameter,
+              mean = mean,
+              sd = sd,
+              lcl = `2.5%`,
+              median = `50%`,
+              ucl = `97.5%`,
+              Rhat = Rhat)
+  
+  Gammahats <- real.estimates[grep("gamma", real.estimates$parameter, fixed = T),] %>%
+    transmute(parameter = parameter,
+              mean = mean,
+              sd = sd,
+              lcl = `2.5%`,
+              median = `50%`,
+              ucl = `97.5%`,
+              Rhat = Rhat)
+  
+  out.list <- list(Nhats = Nhats,
+                   Phihats = Phihats,
+                   Gammahats = Gammahats)
+  return(out.list)
+}
 
 do_analysis <- function(dp, ddl)
 {

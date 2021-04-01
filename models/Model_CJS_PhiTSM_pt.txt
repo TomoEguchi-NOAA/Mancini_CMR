@@ -2,12 +2,17 @@
 # on survival - converted from trap response model on p.212 of Kery and 
 # Schaub. Code on p. 215. There are two survival rates, which correspond
 # to the year after the first marking and the rest. 
+#
 # The time since marking (TSM) models are described well in Chapter 7
 # of the MARK book. Starting around p. 7-40, they describe how the survival
-# rates of the first and the rest provide evidence for transients. In the
-# sidebar on p. 7-44 explains how the ratio between the two estimated
+# rates of the first and the rest provide evidence for transients. For the
+# two survival rates in the model, the first provides the survival rate of
+# both residents and transients (gamma[1]), whereas the second provides the 
+# survival rate of residents only (gamma[2]).
+
+# In the sidebar on p. 7-44 explains how the ratio between the two estimated
 # survival rates from a TSM model can be used to estimate the proportion of 
-# transients (or residents).  
+# transients (or residents). The proportin of residents is gamma[1]/gamma[2]
 
 
 model {

@@ -21,7 +21,7 @@ library(R2ucare)
 library(loo)
 
 source("Mancini_functions.R")
-save.fig <- T
+save.fig <- F
 fig.height <- 4
 fig.width <- 6
 
@@ -303,6 +303,16 @@ models.MARK <- data.frame(community = community.names,
                           model = c("PhiTSM_pt", "PhiTSM_pdot", "PhiTSM_pt",
                                     "PhiTSM_pt", "PhiTSM_pt", "PhiTSM_pdot",
                                     "PhiTSM_pt", "PhiTSM_pt"))
+
+# For GNO, Phi[TSM]p[t] resulted in near 1 survival rate estimate, so used the second best
+# model, which was Phi[.]p[t]
+models.MARK.old <- data.frame(community = community.names,
+                          ID = c(2, 10, 2,
+                                 11, 2, 1,
+                                 2, 11),
+                          model = c("Phidot_pt", "PhiTSM_pdot", "Phidot_pt",
+                                    "PhiTSM_pt", "Phidot_pt", "Phidot_pdot",
+                                    "Phidot_pt", "PhiTSM_pt"))
 ```
 
 
@@ -362,24 +372,51 @@ Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
 
-```{r plot_Nhats_BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BKS when the maximum likelihood approach was used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+```{r plot_Nhats_BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the maximum likelihood approach and the Phi[.]p[t] model were used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_BKS.png"))
 ```
 
 ##### Bayesian
-When the Bayesian approach was used to analyze the BKS dataset with the Phidot_pt model, the estimated survival rate was absurdly small (~ 0.2). Consequently, we used the second best model (PhiTSM_pt) for the inference.
+
+###### Using the same data and model as Mark
+
+```{r parameter_estimates_jags_v5_BKS, echo=F, include=F}
+# v5 means that the same model and dataset as what Mark selected. 
+loc <- "BKS"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated mean survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the Bayesian approach, the Phi[.]p[t] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data and Phi[TSM] model
+
+The Bayesian approach allow us to use the entire dataset, even with the small numbers of captures. 
+When the Bayesian approach was used to analyze the BKS dataset with the Phidot_pt model, the estimated survival rate was absurdly small (~ 0.2). Consequently, we considered the second best model (PhiTSM_pt) for the inference.
 
 ```{r parameter_estimates_jags_BKS, echo=F, include=F}
 loc <- "BKS"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -401,10 +438,9 @@ Using the best model (```r models.MARK %>% filter(community == loc) %>% select(m
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
 
-```{r plot_Nhats_jags_BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BKS when the Bayesian approach was used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+```{r plot_Nhats_jags_BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BKS when the Bayesian approach, the entire dataset, and the Phi[TSM]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
-
 
 #### BMA
 
@@ -464,23 +500,49 @@ The proportion of residents was estimated to be ```r signif(N.Phi.p.hats$Phihats
 
 Estimated seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x).
 
-```{r plot_Nhats_BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BMA when the maximum likelihood approach was used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
+```{r plot_Nhats_BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BMA when the maximum likelihood approach and the Phi[TSM]p[.] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_BMA.png"))
 ```
 
 ##### Bayesian
+
+###### Using the same data and model as Mark
+
+```{r parameter_estimates_jags_v5_BMA, echo=F, include=F}
+# v5 means the same data and model as what Mark selected
+loc <- "BMA"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BKS when the Bayesian approach, the Phi[TSM]p[.] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data and Phi[TSM] model
+
 ```{r parameter_estimates_jags_BMA, echo=F}
 # for this location, the transient model was the best so instead of phi's we have gamma's
 loc <- "BMA"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -498,14 +560,15 @@ if (save.fig)
 ```
 
 
-Using the best model (```r models.MARK %>% filter(community == "BMA") %>% select(model)```), the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2,"lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
+I analyzed the entire dataset with the same model (Phi[TSM]p[.]) using the Bayesian approach. The estimated mean survival rate of residents was ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2,"lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
 
 The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")```. Results from the Bayesian approach were similar to those from the maximum likelihood approach (Mark).  
 
+HOW WERE THESE DIFFERENT FROM THE PREVIOUS ANALYSIS USING A SMALLER DATASET?
 
-```{r plot_Nhats_jags_BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at MBA when the Bayesian approach was used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+```{r plot_Nhats_jags_BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BMA when the Bayesian approach, the Phi[TSM]p[t] model and the entire dataset were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
 
@@ -562,7 +625,7 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at GNO when the maximum likelihood approach was used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
+```{r plot_Nhats_GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at GNO when the maximum likelihood approach and the Phi[.]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
 knitr::include_graphics(paste0("figures/Cm_Nhats_GNO.png"))
 ```
 
@@ -574,18 +637,44 @@ Estimated seasonal abundance fluctuated over time, which ranged from ```r signif
 
 ##### Bayesian
 
+###### Using the same data and model as Mark
+Phi[.]p[t] model needs to be run - ready in Cm_CJS_v5_jags.R 2021-04-02
+
+```{r parameter_estimates_jags_v5_GNO, echo=F, include=F}
+# v5 means the same data and model as what Mark selected
+loc <- "GNO"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at BKS when the Bayesian approach, the Phi[.]p[t] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data and Phi[TSM] model
+
 ```{r parameter_estimates_jags_GNO, echo=F, warning=FALSE, message=FALSE}
 # for this location, the transient model was the best so instead of phi's we have gamma's
 loc <- "GNO"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -607,7 +696,7 @@ if (save.fig)
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
 
-Using the best model (```r models.MARK %>% filter(community == loc) %>% select(model)```), the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
+Using the ```r models.MARK %>% filter(community == loc) %>% select(model)``` model, the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
 
 The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
 
@@ -664,7 +753,7 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients when the maximum likelihood approach and the Phi[TSM]p[t] model were used to analyze capture histories. Black filled circles indicate the means and error bars are 95% confidence intervals (CI)."}
 knitr::include_graphics(paste0("figures/Cm_Nhats_IES.png"))
 ```
 
@@ -678,18 +767,42 @@ Estimated seasonal abundance fluctuated over time, which ranged from ```r signif
 
 ##### Bayesian
 
+###### Using the same data and model as Mark
+
+```{r parameter_estimates_jags_v5_IES, echo=F, include=F}
+# v5 means the same data and model as what Mark selected
+loc <- "IES"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at IES when the Bayesian approach, the Phi[TSM]p[t] model and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data 
 ```{r parameter_estimates_jags_IES, echo=F, warning=FALSE, message=FALSE}
 # for this location, the transient model was the best so instead of phi's we have gamma's
 loc <- "IES"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -707,11 +820,11 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_jags_IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_jags_IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients when the Bayesian approach, the entire dataset, and the Phi[TSM]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
 
-Using the best model (```r models.MARK %>% filter(community == loc) %>% select(model)```), the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
+Using the ```r models.MARK %>% filter(community == loc) %>% select(model)``` model and the entire dataset, the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
 
 The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
 
@@ -768,7 +881,7 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at LSI when the maximum likelihood approach and the Phi[.]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_LSI.png"))
 ```
 
@@ -780,20 +893,45 @@ Estimated seasonal abundance fluctuated over time, which ranged from ```r signif
 
 ##### Bayesian
 
-Although the Phidot model was the best according to the AIC values, we used PhiTSM in the Bayesian inference (I did not check the survival rate difference for this location...)
+###### Using the same data and model as Mark
+
+```{r parameter_estimates_jags_v5_LSI, echo=F, include=F}
+# v5 means the same data and model as what Mark selected
+loc <- "LSI"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at LSI when the Bayesian approach, the Phi[.]p[t] model and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data and Phi[TSM] model
+
+Although the Phidot model was the best according to the AIC values, we used PhiTSM in the Bayesian inference because the estimated survival rate from the Phi[.] model was very small (```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)```). 
 
 ```{r parameter_estimates_jags_LSI, echo=F, message=FALSE, warning=FALSE}
 # for this location, the transient model was the best so instead of phi's we have gamma's
 loc <- "LSI"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -811,7 +949,7 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_jags_LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_jags_LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at LSI including transients when the Bayesian approach, the entire dataset, and the Phi[TSM]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
 
@@ -840,7 +978,6 @@ knitr::kable(MUL.models.df,
              caption = "Table. Model comparison for community MUL",
              table.attr = "style='width:30%;'")
 ```
-
 
 ```{r parameter_estimates_MUL, echo=F, message=FALSE, warning=FALSE}
 dat.1.Cm.community <- filter(dat.1.Cm, community == "MUL")
@@ -872,7 +1009,7 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at MUL when the maximum likelihood approach and the Phi[.]p[.] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
 knitr::include_graphics(paste0("figures/Cm_Nhats_MUL.png"))
 ```
 
@@ -884,17 +1021,42 @@ Estimated seasonal abundance fluctuated over time, which ranged from ```r signif
 
 ##### Bayesian
 
+###### Using the same data and model as Mark
+
+```{r parameter_estimates_jags_v5_MUL, echo=F, include=F}
+# v5 means the same data and model as what Mark selected
+loc <- "MUL"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$Phihats$mean, 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at MUL when the Bayesian approach, the Phi[.]p[.] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)."}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data and Phi[TSM] model
+
 ```{r parameter_estimates_jags_MUL, echo=F, message=FALSE, warning=FALSE}
 loc <- "MUL"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -912,12 +1074,11 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_jags_MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_jags_MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at MUL when the Bayesian approach, the Phi[TSM]p[.] model, and the entire dataset were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)."}
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
 
-
-Using the best model (```r models.MARK %>% filter(community == loc) %>% select(model)```), the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
+Using the ```r models.MARK %>% filter(community == loc) %>% select(model)``` model, the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
 
 The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
 
@@ -974,7 +1135,7 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at PAO when the maximum likelihood approach and the Phi[.]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
 knitr::include_graphics(paste0("figures/Cm_Nhats_PAO.png"))
 ```
 
@@ -986,18 +1147,42 @@ Estimated seasonal abundance fluctuated over time, which ranged from ```r signif
 
 ##### Bayesian
 
+###### Using the same data and model as Mark
+
+```{r parameter_estimates_jags_v5_PAO, echo=F, include=F}
+# v5 means the same data and model as what Mark selected
+loc <- "PAO"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$Phihats$mean, 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats$lcl, 3)``` - ```r signif(N.Phi.hats$Phihats$ucl, 3)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at PAO when the Bayesian approach, the Phi[.]p[t] model and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)."}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data and Phi[TSM] model
 
 ```{r parameter_estimates_jags_PAO, echo=F, message=FALSE, warning=FALSE}
 loc <- "PAO"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -1015,11 +1200,11 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_jags_PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_jags_PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at PAO when the Bayesian approach, the Phi[TSM]p[t] model and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
 
-Using the best model (```r models.MARK %>% filter(community == loc) %>% select(model)```), the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
+Using the ```r models.MARK %>% filter(community == loc) %>% select(model)``` model, the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
 
 The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
 
@@ -1077,7 +1262,7 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_PLM, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_PLM, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at PLM when the maximum likelihood approach and the Phi[TSM]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_Nhats_PLM.png"))
 ```
 
@@ -1091,17 +1276,42 @@ Estimated seasonal abundance fluctuated over time, which ranged from ```r signif
 
 ##### Bayesian
 
+###### Using the same data and model as Mark
+
+```{r parameter_estimates_jags_v5_PLM, echo=F, include=F}
+# v5 means the same data and model as what Mark selected
+loc <- "PLM"
+N.Phi.hats <- stats.Bayesian_v5(models.MARK.old, loc)
+
+p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
+  geom_point(aes(x = season, y = (mean))) +
+  geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  ylab("Abundance (95% CI)") +
+  labs(title = loc)
+
+if (save.fig)
+  ggsave(plot = p.Nhats, 
+         filename = paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"),
+         height = fig.height, width = fig.width,
+         device = "png", dpi = 600)
+
+#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+```
+
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
+
+```{r plot_Nhats_jags_v5_PLM, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at PLM when the Bayesian approach, the Phi[TSM]p[t], the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)."}
+knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+```
+
+###### Using the entire data
+
 ```{r parameter_estimates_jags_PLM, echo=F, message=FALSE, warning=FALSE}
 loc <- "PLM"
-models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
-
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_M", model.ID, "_", loc, ".rds"))
-
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_", loc, ".rds"))
-
-real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
-
-N.Phi.hats <- extract.Nhats.jags(Cm.inputs, real.estimates)
+N.Phi.hats <- stats.Bayesian(models.MARK, loc)
 
 p.Nhats <- ggplot(data = N.Phi.hats$Nhats) +
   geom_point(aes(x = season, y = (mean))) +
@@ -1119,12 +1329,11 @@ if (save.fig)
 ```
 
 
-```{r plot_Nhats_jags_PLM, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients"}
+```{r plot_Nhats_jags_PLM, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles including transients at PLM when the Bayesian approach, the Phi[TSM]p[t], and the entire data were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)."}
 knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags.png"))
 ```
 
-
-Using the best model (```r models.MARK %>% filter(community == loc) %>% select(model)```), the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2,"lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2,"ucl"], 2)```]). 
+Using the ```r models.MARK %>% filter(community == loc) %>% select(model)``` model, the survival rate of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[2,"mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Gammahats[2,"sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2,"lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2,"ucl"], 2)```]). 
 
 The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1, "mean"]/N.Phi.hats$Gammahats[2, "mean"], 3)``` using the two survival rate estimates (one for transients and residents and another for residents only).
 

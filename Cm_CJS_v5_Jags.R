@@ -33,10 +33,10 @@ community.names <- c("BKS", "BMA", "GNO",
 
 # Using TSM instead of dot for phi
 models.MARK <- data.frame(community = community.names,
-                          ID = c(11, 10, 11,
+                          ID = c(11, 10, 2,
                                  11, 11, 10,
                                  11, 11),
-                          model = c("PhiTSM_pt", "PhiTSM_pdot", "PhiTSM_pt",
+                          model = c("PhiTSM_pt", "PhiTSM_pdot", "Phidot_pt",
                                     "PhiTSM_pt", "PhiTSM_pt", "PhiTSM_pdot",
                                     "PhiTSM_pt", "PhiTSM_pt"))
 

@@ -6,6 +6,9 @@ extract.Nhats <- function(Cm.inputs, real.estimates){
   phihats <- real.estimates[grep("Phi", real.estimates$parameter),]
   
   phats[which(phats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
+  if (nrow(phats) == 1){
+    phats %>% slice(rep(1, each = (length(colnames(data.0))-1))) -> phats
+  }
   phats$season <- colnames(data.0)[1:(ncol(data.0)-1)]
   
   n.caught <- colSums(data.0)

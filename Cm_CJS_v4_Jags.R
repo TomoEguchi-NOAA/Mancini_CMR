@@ -24,12 +24,12 @@ community.names <- c("BKS", "BMA", "GNO",
 
 # the best models for communities, determined through AICc in MARK:
 models.MARK <- data.frame(community = community.names,
-                          ID = c(2, 10, 11,
-                                 11, 2, 1,
-                                 2, 11),
-                          model = c("Phidot_pt", "PhiTSM_pdot", "PhiTSM_pt",
-                                    "PhiTSM_pt", "Phidot_pt", "Phidot_pdot",
-                                    "Phidot_pt", "PhiTSM_pt"))
+                          ID = c(11, 10, 11,
+                                 11, 11, 10,
+                                 11, 11),
+                          model = c("PhiTSM_pt", "PhiTSM_pdot", "PhiTSM_pt",
+                                    "PhiTSM_pt", "PhiTSM_pt", "PhiTSM_pdot",
+                                    "PhiTSM_pt", "PhiTSM_pt"))
 
 
 

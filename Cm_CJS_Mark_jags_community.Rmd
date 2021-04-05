@@ -401,7 +401,7 @@ if (save.fig)
 #format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
 ```
 
-Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated mean survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated mean survival rate was ```r signif(N.Phi.hats$Phihats$mean, 3)``` (SD = ```r signif(N.Phi.hats$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats$lcl, 3)``` - ```r signif(N.Phi.hats$Phihats$ucl, 2)```]).
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
 
@@ -529,7 +529,9 @@ if (save.fig)
 #format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
 ```
 
-Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated mean survival rate of residents was ```r signif(N.Phi.hats$Gammahats[2, "mean"], 3)``` (SD = ```r signif(N.Phi.hats$Gammahats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]). 
+
+The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1,"mean"]/N.Phi.hats$Gammahats[2,"mean"], 3)```, using the two survival rates (one for transients and residents and another for residents only). 
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
 
@@ -661,7 +663,7 @@ if (save.fig)
 #format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
 ```
 
-Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$Phihats$mean, 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats$lcl, 3)``` - ```r signif(N.Phi.hats$Phihats$ucl, 3)```]).
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
 
@@ -790,7 +792,9 @@ if (save.fig)
 #format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
 ```
 
-Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated mean survival rate of residents was ```r signif(N.Phi.hats$Gammahats[2, "mean"], 3)``` (SD = ```r signif(N.Phi.hats$Gammahats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]).
+
+The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1,"mean"]/N.Phi.hats$Gammahats[2,"mean"], 3)```, using the two survival rates (one for transients and residents and another for residents only). 
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
 
@@ -916,7 +920,7 @@ if (save.fig)
 #format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
 ```
 
-Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$Phihats$mean, 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats$lcl, 3)``` - ```r signif(N.Phi.hats$Phihats$ucl, 3)```]).
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
 
@@ -926,7 +930,7 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
 
 ###### Using the entire data and Phi[TSM] model
 
-Although the Phidot model was the best according to the AIC values, we used PhiTSM in the Bayesian inference because the estimated survival rate from the Phi[.] model was very small (```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)```). 
+Although the Phidot model was the best according to the AIC values, we used PhiTSM in the Bayesian inference because the estimated survival rate from the Phi[.] model was very small (```r signif(N.Phi.hats$Phihats$mean, 3)```). 
 
 ```{r parameter_estimates_jags_LSI, echo=F, message=FALSE, warning=FALSE}
 # for this location, the transient model was the best so instead of phi's we have gamma's
@@ -1299,7 +1303,9 @@ if (save.fig)
 #format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
 ```
 
-Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated survival rate was ```r signif(N.Phi.hats$mean.phi[2, "mean"], 3)``` (mean, SD = ```r signif(N.Phi.hats$Phihats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Phihats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Phihats[2, "ucl"], 2)```]).
+Using the best model (```r models.MARK.old %>% filter(community == loc) %>% select(model)```), the estimated mean survival rate of residents was ```r signif(N.Phi.hats$Gammahats[2, "mean"], 3)``` (SD = ```r signif(N.Phi.hats$Gammahats[2, "sd"], 3)```, 95% CI = [```r signif(N.Phi.hats$Gammahats[2, "lcl"], 3)``` - ```r signif(N.Phi.hats$Gammahats[2, "ucl"], 2)```]).
+
+The proportion of residents was estimated to be ```r signif(N.Phi.hats$Gammahats[1,"mean"]/N.Phi.p.hats$Gammahats[2,"mean"], 3)```, using the two survival rates (one for transients and residents and another for residents only). 
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.hats$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 3)``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure x). These estimates were significantly lower than those from MARK. 
 

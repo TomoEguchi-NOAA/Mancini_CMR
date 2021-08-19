@@ -25,7 +25,7 @@ stats.Bayesian <- function(models.MARK, loc){
   return(N.Phi.hats)  
 }
 
-extract.Nhats <- function(Cm.inputs, real.estimates){
+extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
   data.0 <- Cm.inputs$CJS.data$data
   
   phats <- real.estimates[grep("p", real.estimates$parameter),]

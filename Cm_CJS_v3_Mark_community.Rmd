@@ -60,7 +60,8 @@ for (k in 1:length(community.names)){
                              "PAO" = "2001-08-01",
                              "PLM" = "2011-01-01")
       
-      dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k] & DATE >= as.Date(first.sample))
+      dat.1.Cm.community <- filter(dat.1.Cm, 
+                                   community == community.names[k] & DATE >= as.Date(first.sample))
       CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
       #stop()
       community.names.used[c + 1] <- community.names[k]

@@ -36,7 +36,7 @@ community.names <- levels(as.factor(dat.1.Cm$community))
 
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
-k <- 2
+k <- 4
 p.recap <- vector(mode = "numeric")
 community.names.used <- vector(mode = "character")
 
@@ -44,8 +44,10 @@ for (k in 1:length(community.names)){
   
   if (!file.exists(paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))){
 
-    dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k]) 
-    CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+    dat.1.Cm.community <- filter(dat.1.Cm, 
+                                 community == community.names[k]) 
+    CJS.data <- dat2CJS(dat.1.Cm.community, 
+                        save.file = FALSE)
     n.GT2.cap <- length(which(rowSums(CJS.data$data) > 1))
     p.recap[k] <- n.GT2.cap/nrow(CJS.data$data)
     

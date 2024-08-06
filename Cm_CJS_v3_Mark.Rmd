@@ -20,6 +20,8 @@ library(ggridges)
 library(RMark)
 library(R2ucare)
 
+# Make sure to install mark.exe! It can be found here: http://www.phidot.org/software/mark/downloads/
+
 source("Mancini_functions.R")
 save.fig <- F
 ```

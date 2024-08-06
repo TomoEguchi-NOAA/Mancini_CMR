@@ -32,13 +32,24 @@ community.names <- c("BKS", "BMA", "GNO",
 #                                     "Phidot_pt", "PhiTSM_pt"))
 
 # Using TSM instead of dot for phi
+# models.MARK <- data.frame(community = community.names,
+#                           ID = c(11, 10, 2,
+#                                  11, 11, 10,
+#                                  11, 11),
+#                           model = c("PhiTSM_pt", "PhiTSM_pdot", "Phidot_pt",
+#                                     "PhiTSM_pt", "PhiTSM_pt", "PhiTSM_pdot",
+#                                     "PhiTSM_pt", "PhiTSM_pt"))
+
+# These are the ones used in Cm_CJS_Mark_jags_community Aug 2021 v2.Rmd
+# For GNO, Phi[TSM]p[t] resulted in near 1 survival rate estimate, so used the second best
+# model, which was Phi[~1]p[t]
 models.MARK <- data.frame(community = community.names,
-                          ID = c(11, 10, 2,
-                                 11, 11, 10,
-                                 11, 11),
-                          model = c("PhiTSM_pt", "PhiTSM_pdot", "Phidot_pt",
-                                    "PhiTSM_pt", "PhiTSM_pt", "PhiTSM_pdot",
-                                    "PhiTSM_pt", "PhiTSM_pt"))
+                          ID = c(2, 10, 2,
+                                 11, 2, 1,
+                                 2, 11),
+                          model = c("Phidot_pt", "PhiTSM_pdot", "Phidot_pt",
+                                    "PhiTSM_pt", "Phidot_pt", "Phidot_pdot",
+                                    "Phidot_pt", "PhiTSM_pt"))
 
 
 #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
@@ -120,13 +131,14 @@ for (k in 1:length(community.names)){
                           filter(models.MARK, 
                                  community == community.names[k])["ID"], "_", 
                           community.names[k], ".rds"))
+    
+    # loo.out[[k1]] <- compute.LOOIC(loglik = jm$sims.list$loglik, 
+    #                                MCMC.params = MCMC.params, 
+    #                                data.vector = as.vector(jags.data$y))
+    rm(list = c("jm"))
+  
   }  
   
-  # loo.out[[k1]] <- compute.LOOIC(loglik = jm$sims.list$loglik, 
-  #                                MCMC.params = MCMC.params, 
-  #                                data.vector = as.vector(jags.data$y))
-  rm(list = c("jm"))
-
 }
 
 #saveRDS(loo.out, file = paste0("RData/CJS_Cm_jags_", community.names[k], "_loo.rds"))

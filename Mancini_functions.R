@@ -41,6 +41,7 @@ plot.Nhats.Jags <- function(loc, N.Phi.p.hats.Jags, save.fig, fig.height, fig.wi
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
+  #return(p.Nhats)
 }
 
 
@@ -59,6 +60,7 @@ plot.Nhats.Mark <- function(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.wi
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
+  #return(p.Nhats)
 }
 
 
@@ -309,7 +311,7 @@ do_analysis <- function(dp, ddl)
   cml <- create.model.list("CJS")
   
   # run all all models and return as a list with class marklist
-  results <- mark.wrapper(cml,
+  results <- mark.wrapper(model.list = cml,
                           data=dp,
                           ddl=ddl,
                           output=FALSE,

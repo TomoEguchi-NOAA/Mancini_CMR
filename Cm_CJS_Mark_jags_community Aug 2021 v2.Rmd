@@ -24,7 +24,7 @@ library(R2ucare)
 library(kableExtra)
 
 source("Mancini_functions.R")
-save.fig <- F
+save.fig <- T
 fig.height <- 4
 fig.width <- 6
 
@@ -903,8 +903,13 @@ N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates)
 
 # turn Nhats to NA when SE = 0 or SE > 1000
 #Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
-plot.Nhats.Mark(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width)
+p.LSI <- plot.Nhats.Mark(loc, 
+                         N.Phi.p.hats.Mark, 
+                         save.fig, 
+                         fig.height, 
+                         fig.width)
 
+# SEs are zeros for this place... Not worth analyzing. 
 ```
 
 
@@ -932,7 +937,8 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_LSI.png"))
 #loc <- "LSI"
 N.Phi.hats.Jags <- stats.Bayesian_v5(models.MARK.old, loc)
 
-plot.Nhats.Jags(loc, N.Phi.hats.Jags, save.fig, fig.height, fig.width, ext = "jagsv5.png")
+plot.Nhats.Jags(loc, 
+                N.Phi.hats.Jags, save.fig, fig.height, fig.width, ext = "jags_v5.png")
 
 #format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
 ```

@@ -20,6 +20,25 @@ source("Mancini_functions.R")
 
 ```
 
+! ********************************************************************************
+2024-08-07: An email was sent to Agnese Mancini and Catherine Hart on 2024-08-01 inquiring if they want to resurrect this project (i.e., greens and hawksbill turtle CMR analyses). Their responses were positive.
+
+Catherine: 
+"Thanks for touching base on this...time really flies!
+
+"I moved to the UK 3 months ago (position at Bristol Zoological Society) but I am interested in keeping my turtle related research going so, if Agnese is happy with it, I would definitely be interested in picking these two studies up again."
+
+Agnese:
+
+"I am super interested in getting the East pacific green turtle study out ASAP, however for the hawksbill dataset, there is a study on going with ICAPO, I think it is a population viability study, so I am double checking that we would not repeat/duplicate efforts and will let you know! 
+
+"Tomo, should we update the database? So many more Cm :) would be interesting adding them, i think!
+
+"Happy to get this running again, I will be travelling a lot in the next couple of months, but will do my best to reply as fast as possible!"
+
+I will wait for Agnese's email before moving forward with this work.
+! ********************************************************************************
+
 This document summarizes preliminary analyses of capture-recapture data for hawksbill turtles.  The data were used to investigate somatic growth patterns and to estimate survival rates and abundance.  Growths patterns of hawksbill turtles were determined by fitting the von Bertalanffy function to repeated measurements of CCL.  To estimate survival and abundance, the Cormack-Jolly-Seber capture-mark-recapture (CJS CMR) model was fitted to the capture-recapture histories. In the following, I will summarize the preliminary results of the analyses.  
 
 All statistical analyses were conducted using the R statistical environment (v. 3.6.1, R Development Team).
@@ -53,6 +72,9 @@ CJS.data$data %>% rownames_to_column(var = "ID") -> data.CJS
 
 data.CCL  %>% left_join(data.CJS, by = "ID") %>%
   select(min_CCL) -> cov.CCL
+
+# von Bertalanffy model was fit to the growth data in vonBertFit.Rmd. Both species were fit in the
+# same script. 
 
 jags.data <- vonBert.jags.data(dat.1, "Ei")
 

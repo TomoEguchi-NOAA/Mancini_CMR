@@ -47,6 +47,27 @@ figure.id <- 1
 
 ```
 
+! ********************************************************************************
+2024-08-07: An email was sent to Agnese Mancini and Catherine Hart on 2024-08-01 inquiring if they want to resurrect this project (i.e., greens and hawksbill turtle CMR analyses). Their responses were positive.
+
+Catherine: 
+"Thanks for touching base on this...time really flies!
+
+"I moved to the UK 3 months ago (position at Bristol Zoological Society) but I am interested in keeping my turtle related research going so, if Agnese is happy with it, I would definitely be interested in picking these two studies up again."
+
+Agnese:
+
+"I am super interested in getting the East pacific green turtle study out ASAP, however for the hawksbill dataset, there is a study on going with ICAPO, I think it is a population viability study, so I am double checking that we would not repeat/duplicate efforts and will let you know! 
+
+"Tomo, should we update the database? So many more Cm :) would be interesting adding them, i think!
+
+"Happy to get this running again, I will be travelling a lot in the next couple of months, but will do my best to reply as fast as possible!"
+
+I sent her the last dataset and she will update the spreadsheet in the near future and we will pick it up again. 
+
+Because some sites do not have sufficient recaptures to fit some of the models, I should look into one place at a time to analyze the site-specific data in details. I will return to this when I received the updated dataset from Agnese. 
+! ********************************************************************************
+
 ## Methods {-}
 
 (I think a lot of this stuff can be in appendix. We can just provide results for a couple places.)

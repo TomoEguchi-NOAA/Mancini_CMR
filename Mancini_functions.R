@@ -457,6 +457,38 @@ get.data.Cm <- function(filename){
   return(dat.1)
 }
 
+get.data.Cm.2023 <- function(filename){
+  col.def <- cols(Year = col_integer(),
+                  Month = col_integer(),
+                  Day = col_integer(),
+                  Site_code = col_character(),
+                  Date = col_date(format = "%m/%d/%Y"),
+                  TurtleID = col_character(),
+                  Site_name = col_character(),
+                  Recapture = col_character(),
+                  Rtag_new = col_character(),
+                  Ltag_new = col_character(),
+                  Rtag_old = col_character(),
+                  Ltag_old = col_character(),
+                  SCL = col_double(),
+                  CCL = col_double(),
+                  Weight = col_double(),
+                  Data_ownership = col_character())
+  
+  dat.1 <- read_csv(file = filename, col_types = col.def)
+  
+  dat.1 %>% mutate(ID = as.factor(TurtleID)) %>% 
+    transmute(ID = ID,
+              detect = 1,
+              DATE = Date,
+              SCL = SCL,
+              CCL = CCL,
+              weight_kg = Weight,
+              community = Site_code)-> dat.1
+  
+  return(dat.1)
+}
+
 get.data <- function(filename){
   col.def <- cols(monitoring_event = col_character(),
                   value = col_integer(),

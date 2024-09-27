@@ -63,9 +63,12 @@ plot.Nhats.Mark <- function(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.wi
   #return(p.Nhats)
 }
 
-
-
-capture.recapture.stats <- function(loc, dat.1.Cm.community, Cm.inputs, save.fig, fig.height, fig.width){
+capture.recapture.stats <- function(loc, 
+                                    dat.1.Cm.community, 
+                                    #Cm.inputs, 
+                                    save.fig = FALSE, 
+                                    fig.height = 4, 
+                                    fig.width = 6){
   
   CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
   n.occ <- ncol(CJS.data$data)
@@ -102,10 +105,15 @@ capture.recapture.stats <- function(loc, dat.1.Cm.community, Cm.inputs, save.fig
   rownames(tmp.counts.df) <- 1:max(tmp.counts)
   colnames(tmp.counts.df) <- colnames(CJS.data$data)
   tmp.counts.df <- rownames_to_column(tmp.counts.df, var = "n.recaptures")
-  tmp.counts.df %>% pivot_longer(!n.recaptures, names_to = "Date", values_to = "Freq") -> counts.freq
+  tmp.counts.df %>% 
+    pivot_longer(!n.recaptures, 
+                 names_to = "Season", 
+                 values_to = "Freq") -> counts.freq
 
   p.n.recap <- ggplot(counts.freq) + 
-    geom_col(aes(x = Date, y = Freq, fill = n.recaptures)) + 
+    geom_col(aes(x = Season, 
+                 y = Freq, 
+                 fill = n.recaptures)) + 
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
           legend.position = "top") +
     ylab("# individuals") + labs(fill = "# recaptures", title = loc)
@@ -119,7 +127,10 @@ capture.recapture.stats <- function(loc, dat.1.Cm.community, Cm.inputs, save.fig
   loc.stats <- list(CJS.data = CJS.data,
                     n.occ = n.occ,
                     n.caught = n.caught,
-                    n.caps = n.caps)
+                    n.caps = n.caps,
+                    plots = list(captures = p.captures,
+                                 n.captures = p.n.captures,
+                                 n.recap = p.n.recap))
     
   return(loc.stats)
 }
@@ -458,9 +469,12 @@ get.data.Cm <- function(filename){
 }
 
 get.data.Cm.2023 <- function(filename){
-  col.def <- cols(Year = col_integer(),
+  col.def <- cols(Season = col_character(),
+                  Year = col_integer(),
                   Month = col_integer(),
                   Day = col_integer(),
+                  Region = col_character(),
+                  Macro_site = col_character(),
                   Site_code = col_character(),
                   Date = col_date(format = "%m/%d/%Y"),
                   TurtleID = col_character(),
@@ -484,7 +498,9 @@ get.data.Cm.2023 <- function(filename){
               SCL = SCL,
               CCL = CCL,
               weight_kg = Weight,
-              community = Site_code)-> dat.1
+              season = Season,
+              community = as.factor(Site_code),
+              Macro_site = as.factor(Macro_site))-> dat.1
   
   return(dat.1)
 }

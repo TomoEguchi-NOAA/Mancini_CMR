@@ -1,4 +1,25 @@
 
+first.sample <- function(site.name){
+  first.sample.season <- switch(site.name,
+                                "BKS" = "2015-01",
+                                "CL_BMA" = "2001-08",
+                                "GNO" = "2001-08",
+                                "CI_IES" = "2006-01",
+                                #"LSI" = "2002-08-01",
+                                "MUL" = "2008-08",
+                                "PAO" = "2001-08")
+  
+  year <- unlist(str_split(first.sample.season, "-") )[1] %>% as.numeric()
+  season.begin <- unlist(str_split(first.sample.season, "-") )[2]
+  first.sample.date <- as.Date(ifelse(season.begin == "01",
+                                      as.Date(paste0(year-1, "-10-01")),
+                                      as.Date(paste0(year, "-05-01"))),
+                               format = "%Y-%m-%d") 
+  
+  return(list(first.sample.season = first.sample.season,
+              first.sample.date = first.sample.date))
+  
+} 
 
 Nhats_comparison <- function(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
                              fig.height, fig.width){

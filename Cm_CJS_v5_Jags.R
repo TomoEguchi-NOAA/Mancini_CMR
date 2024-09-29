@@ -4,6 +4,7 @@ library(tidyverse)
 library(lubridate)
 library(reshape)
 library(bayesplot)
+library(RMark)
 #library(ggridges)
 library(loo)
 
@@ -18,48 +19,49 @@ MCMC.params <- list(n.samples = 50000,
                     n.thin = 5,
                     n.chains = 5)
 
-community.names <- c("BKS", "BMA", "GNO", 
-                     "IES", "LSI", "MUL",
-                     "PAO", "PLM")
+# Changed from community to site in Sept 2024 as per Agnes's suggestion
+site.names <- c("BKS", "CI_IES", "CL_BMA", "GNO", "MUL", "PAO")
+# community.names <- c("BKS", "BMA", "GNO", 
+#                      "IES", "LSI", "MUL",
+#                      "PAO", "PLM")
 
-# the best models for communities, determined through AICc in MARK:
-# models.MARK <- data.frame(community = community.names,
-#                           ID = c(2, 10, 11,
-#                                  11, 2, 1,
-#                                  2, 11),
-#                           model = c("Phidot_pt", "PhiTSM_pdot", "PhiTSM_pt",
-#                                     "PhiTSM_pt", "Phidot_pt", "Phidot_pdot",
-#                                     "Phidot_pt", "PhiTSM_pt"))
+#Need to figure out which models were considered best in Mark
+best.model.ID <- vector(mode = "numeric", length = length(site.names))
+best.model.name<- vector(mode = "character", length = length(site.names))
+k <- 1                                                
+for (k in 1:length(site.names)){                                  
+  Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", site.names[k], ".rds"))
+  
+  models.df <- model.table(Cm.results.Mark)
+  
+  best.model.ID[k] <- as.numeric(row.names(models.df)[1])
+  best.model.name[k] <- models.df[1, "model"]
+}
 
-# Using TSM instead of dot for phi
-# models.MARK <- data.frame(community = community.names,
-#                           ID = c(11, 10, 2,
-#                                  11, 11, 10,
-#                                  11, 11),
-#                           model = c("PhiTSM_pt", "PhiTSM_pdot", "Phidot_pt",
-#                                     "PhiTSM_pt", "PhiTSM_pt", "PhiTSM_pdot",
-#                                     "PhiTSM_pt", "PhiTSM_pt"))
+tmp1 <- str_replace(best.model.name, "p", "_p")
+tmp2 <- str_replace(tmp1, "\\(~1\\)", "dot")
+tmp3 <- str_replace(tmp2, "\\(~1\\)", "dot")
+tmp4 <- str_replace(tmp3, "\\(~time\\)", "t")
+tmp5 <- str_replace(tmp4, "\\(~tsm\\)", "TSM")
+best.model.names <- str_replace(tmp5, "\\(~effort\\)", "effort")
 
 # These are the ones used in Cm_CJS_Mark_jags_community Aug 2021 v2.Rmd
 # For GNO, Phi[TSM]p[t] resulted in near 1 survival rate estimate, so used the second best
 # model, which was Phi[~1]p[t]
-models.MARK <- data.frame(community = community.names,
-                          ID = c(2, 10, 2,
-                                 11, 2, 1,
-                                 2, 11),
-                          model = c("Phidot_pt", "PhiTSM_pdot", "Phidot_pt",
-                                    "PhiTSM_pt", "Phidot_pt", "Phidot_pdot",
-                                    "Phidot_pt", "PhiTSM_pt"))
-
+models.MARK <- data.frame(site = site.names,
+                          ID = best.model.ID,
+                          model = best.model.names)
 
 #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 
 # Use the input files from Mark analysis.
-for (k in 1:length(community.names)){
+for (k in 1:length(site.names)){
   
-  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_", 
-                                     community.names[k], ".rds"))
+  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", 
+                                     site.names[k], ".rds"))
 
+  Cm.output <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", 
+                                     site.names[k], ".rds"))
   CH <- Cm.inputs$CH.1 %>% select(-ID) %>% as.matrix()
   
   nInd <- sum(Cm.inputs$CH.R2ucare$effY)
@@ -79,15 +81,45 @@ for (k in 1:length(community.names)){
     m[k2, first.cap[k2]] <- 1
   }
   
-  jags.data <- list(y = CH, 
-                    f = first.cap, 
-                    nind = nInd, 
-                    n.occasions = dim(CH)[2],
-                    n = ns, 
-                    T = ncol(CH),
-                    dt = c(0, delta.dates),
-                    mean.K = 2000,
-                    m = m)
+  if (length(grep("effort", models.MARK[k, "model"])) > 0){
+    dat.1.Cm <- get.data.Cm.2023("data/240925_Base datos_Cm_2001-2023.csv")
+    dat.1.Cm.site <- filter(dat.1.Cm, 
+                            Macro_site == site.names[k]) 
+    
+    first.sample <- first.sample(site.names[k])    
+    
+    dat.2.Cm.site <- filter(dat.1.Cm.site, 
+                            DATE >= first.sample$first.sample.date)
+    
+    dat.2.Cm.site %>% select(season, "DATE") %>% 
+      group_by(season) %>% #-> tmp3
+      summarise(effort = n_distinct(DATE)) -> effort.season
+    
+    jags.data <- list(y = CH, 
+                      f = first.cap, 
+                      nind = nInd, 
+                      n.occasions = dim(CH)[2],
+                      n = ns, 
+                      T = ncol(CH),
+                      dt = c(0, delta.dates),
+                      mean.K = 2000,
+                      m = m,
+                      x = as.vector(effort.season$effort))
+    
+  } else {
+    
+    jags.data <- list(y = CH, 
+                      f = first.cap, 
+                      nind = nInd, 
+                      n.occasions = dim(CH)[2],
+                      n = ns, 
+                      T = ncol(CH),
+                      dt = c(0, delta.dates),
+                      mean.K = 2000,
+                      m = m)
+    
+  }
+  
   
   ## parameters to monitor - when this is changed, make sure to change
   ## summary statistics index at the end of this script. 
@@ -100,22 +132,22 @@ for (k in 1:length(community.names)){
                      parameters.to.save = parameters,
                      run.date = Sys.Date())
   
-  if (!file.exists(paste0("RData/CJS_Cm_jags_input_v5_", community.names[k], ".rds")))
+  if (!file.exists(paste0("RData/CJS_Cm_2023_jags_input_v5_", site.names[k], ".rds")))
     saveRDS(jags.input, 
-            file = paste0("RData/CJS_Cm_jags_input_v5_", community.names[k], ".rds"))        
+            file = paste0("RData/CJS_Cm_2023_jags_input_v5_", site.names[k], ".rds"))        
   
   # models need to change according to the output from Mark, or do we do 
   # a similar model selection process using Pareto K?
   MCMC.params$model.file <- paste0("models/Model_CJS_", 
                                    filter(models.MARK, 
-                                          community == community.names[k])["model"],
+                                          site == site.names[k])["model"],
                                    ".txt")
   
-  if (!file.exists(paste0("RData/CJS_Cm_jags_v5_M",
+  if (!file.exists(paste0("RData/CJS_Cm_2023_jags_v5_M",
                           filter(models.MARK, 
-                                 community == community.names[k])["ID"], "_", 
-                          community.names[k], ".rds"))){
-    
+                                 site == site.names[k])["ID"], "_", 
+                          site.names[k], ".rds"))){
+    begin.time <- Sys.time()
     jm <- jags(data = jags.data,
                parameters.to.save= parameters,
                model.file = MCMC.params$model.file,
@@ -126,11 +158,19 @@ for (k in 1:length(community.names)){
                DIC = T, 
                parallel=T)
     
+    run.time <- Sys.time() - begin.time
+    jags.out <- list(jm = jm,
+                     MCMC.params = MCMC.params,
+                     run.date = Sys.Date(),
+                     run.time = run.time,
+                     System = Sys.getenv(),
+                     Model = read_delim(MCMC.params$model.file, "\n"))
+    
     saveRDS(jm, 
-            file = paste0("RData/CJS_Cm_jags_v5_M",
+            file = paste0("RData/CJS_Cm_2023_jags_v5_M",
                           filter(models.MARK, 
-                                 community == community.names[k])["ID"], "_", 
-                          community.names[k], ".rds"))
+                                 site == site.names[k])["ID"], "_", 
+                          site.names[k], ".rds"))
     
     # loo.out[[k1]] <- compute.LOOIC(loglik = jm$sims.list$loglik, 
     #                                MCMC.params = MCMC.params, 
@@ -141,6 +181,6 @@ for (k in 1:length(community.names)){
   
 }
 
-#saveRDS(loo.out, file = paste0("RData/CJS_Cm_jags_", community.names[k], "_loo.rds"))
+#saveRDS(loo.out, file = paste0("RData/CJS_Cm_jags_", site.names[k], "_loo.rds"))
         
 

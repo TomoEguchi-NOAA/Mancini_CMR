@@ -43,12 +43,15 @@ Nhats_comparison <- function(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
   
   if (save.fig)
     ggsave(plot = p.Nhats.comparison, 
-           filename = paste0("figures/Cm_Nhats_comp_", loc, ".png"),
+           filename = paste0("figures/Cm_2023_Nhats_comp_", loc, ".png"),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
 }
 
-plot.Nhats.Jags <- function(loc, N.Phi.p.hats.Jags, save.fig, fig.height, fig.width, ext = "jags_v5.png"){
+plot.Nhats.Jags <- function(loc, 
+                            N.Phi.p.hats.Jags, 
+                            save.fig, 
+                            fig.height, fig.width, ext = "jags_v5.png"){
   p.Nhats <- ggplot(data = N.Phi.hats.Jags$Nhats) +
     geom_point(aes(x = season, y = (mean))) +
     geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
@@ -58,7 +61,7 @@ plot.Nhats.Jags <- function(loc, N.Phi.p.hats.Jags, save.fig, fig.height, fig.wi
   
   if (save.fig)
     ggsave(plot = p.Nhats, 
-           filename = paste0("figures/Cm_Nhats_", loc, "_", ext),
+           filename = paste0("figures/Cm_2023_Nhats_", loc, "_", ext),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
@@ -77,7 +80,7 @@ plot.Nhats.Mark <- function(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.wi
   
   if (save.fig)
     ggsave(plot = p.Nhats, 
-           filename = paste0("figures/Cm_Nhats_", loc, ".png"),
+           filename = paste0("figures/Cm_2023_Nhats_", loc, ".png"),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
@@ -184,12 +187,12 @@ n.captures <- function(x){
   return(x)
 }
 
-stats.Bayesian_v5 <- function(models.MARK, loc){
-  models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
+stats.Bayesian_v5 <- function(model.ID, loc){
+  #models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
   
-  Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_v5_M", model.ID, "_", loc, ".rds"))
+  Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_v5_M", model.ID, "_", loc, ".rds"))
   
-  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_v5_", loc, ".rds"))
+  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_input_v5_", loc, ".rds"))
   
   real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
   

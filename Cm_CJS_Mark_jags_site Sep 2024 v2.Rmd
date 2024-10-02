@@ -188,8 +188,7 @@ overall.GOF.df <- data.frame(do.call(rbind, overall.GOF))
 ```
 
 #### Overall test {-}
-
-GNO returns NAN in test results because 23rd occasion returns NaN for its statistic. I'm not sure what's causing this. Results for GNO do not look good so it may be good to remove this dataset from further analysis. Among all four tests, test3.sr was the only one that contained NAs for GNO. 
+The goodness of fit tests indicated that the models fit well to the data and no apparent overdispersion was found in all sites (c-hat < 1.2, Table \@ref(tab:table-overall-GOF)). 
 
 ```{r check_GNO_data, echo=F, include=F}
 output.filename <- paste0("RData/CJS_Cm_2023_RMark_input_GNO.rds")
@@ -203,7 +202,6 @@ GNO_overall <- overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]),
 
 ```
 
-According to the GOF tests, all c-hat values were acceptable (Table \@ref(tab:table-overall-GOF)).  
 
 ```{r table-overall-GOF, echo=F, include=T}
 knitr::kable(overall.GOF.df, 
@@ -215,9 +213,7 @@ knitr::kable(overall.GOF.df,
 ```
 
 #### TEST3.SR {-}
-TEST3.SR asks "of those individuals seen either on or before occasion (i), what proportion were ever seen again?" According to the Book (Mark Book), it states that "If TEST3.SR is rejected, then this suggests that there is a difference in 'survival' among individuals, depending on whether or not they were seen for the first time either on or before occasion (i)." 
-
-All datasets passed Test3.sr, except GNO, which resulted in NaN (Table \@ref(tab:table-test3sr)).
+A test to determine if there is a difference in apparent survival among individuals (TEST3.SR) indicated that there was no observed differences (Table \@ref(tab:table-test3sr)). This test is based on calculating the proportion of captured individuals on a capture date that was recaptured in later dates. 
 
 ```{r test3sr, echo=FALSE, include=T}
 test3sr.overall <- lapply(test3sr_Cm, 
@@ -282,7 +278,7 @@ test2ct.overall <- lapply(test2ct_Cm,
 test2ct.overall.df <- data.frame(do.call(rbind, test2ct.overall))
 ```
 
-All datasets, except PAO, passed test2.ct except PAO (Table \@ref(tab:table-test2ct)).
+All datasets, except PAO, passed test2.ct (Table \@ref(tab:table-test2ct)).
 
 ```{r table-test2ct, echo=F, include=T}
 knitr::kable(test2ct.overall.df, 
@@ -323,38 +319,15 @@ knitr::kable(test2cl.overall.df,
 
 ```
 
-All tests indicate that almost all datasets passed the GOF tests. (except Test3.sr for GNO, which resulted in NAs... and PAO Test2.ct, which had p < 0.05) 
+All tests indicate that almost all datasets passed the GOF tests. (except Test3.sr for GNO, which resulted in NAs... and PAO Test2.ct, which had p < 0.05). Possible reasons for these possible violations are discussed later.  
 
 For the following analyses, estimated capture probabilities that were less than 0.001 were considered unreliable and eliminated. 
-
-#### BKS Model Comparison {-}
-
-Estimates for the best model
-```{r}
-loc <- "BKS"
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
-
-BKS.model.comp <- model.table(Cm.results)
-BKS.model.comp$Model <- paren2bracket(BKS.model.comp$model)
-knitr::kable(BKS.model.comp %>% select(Model, DeltaAICc), 
-             digits = 2,
-             col.names = c("Model", "DeltaAICc"),
-             caption = paste0("Model comparison for ", loc),
-             table.attr = "style='width:30%;'")
-```
-
-
-```{r}
-Cm.results$Phi.dot.p.t$results$real
-
-
-```
 
 
 #### BKS summary statistics {-}
 
 ```{r capture_history_BKS, echo=FALSE}
-
+loc <- "BKS"
 dat.1.Cm.site <- filter(dat.1.Cm, Macro_site == loc)
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", loc, ".rds"))
 
@@ -391,26 +364,25 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 ##### Mark (Phi[.]p[t]) {-}
 For this study area, the best model was a constant survival and time-dependent capture probabilities (Phi[~1]p[time], \@ref(tab:table-model-BKS)). The second best model with $\delta$AICc = 1.45 (Phi[tsm]p[time]) indicated survival may be a function of time-since-marking, which is an evidence of presence of transient animals.   
 
-```{r model_comp_BKS, echo=F}
-Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
+```{r r table-models-BKS, echo=F, include=T}
 
-BKS.models.df <- model.table(Cm.results.Mark) %>% 
-  select(model, DeltaAICc) %>% 
-  mutate(model = paren2bracket(model)) #%>% tilde12dot()
-```
+Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
+
+BKS.model.comp <- model.table(Cm.results)
+BKS.model.comp$Model <- paren2bracket(BKS.model.comp$model)
 
 
-```{r table-models-BKS, echo=F, include=T}
 knitr::kable(BKS.models.df, 
              digits = 2,
              col.names = c("model", "DeltaAICc"),
              row.names = F,
              caption = paste0("Model comparison for site ", loc),
              table.attr = "style='width:30%;'")
+
 ```
 
 
-```{r parameter_estimates_BKS, echo=F, include=F}
+```{r parameter-estimates-BKS, echo=F, include=F}
 
 real.estimates <- Cm.results.Mark$Phi.dot.p.t$results$real %>% 
   rownames_to_column("parameter")
@@ -432,7 +404,7 @@ Estimated mean seasonal abundance fluctuated over time, which ranged from ```r s
 
 
 ```{r plot-Nhats-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, ".png"))
 ```
 
 ##### Bayesian {-}
@@ -451,7 +423,7 @@ plot.Nhats.Jags(loc,
 
 ```
 
-Using the best model (```r models.MARK.old %>% filter(site == loc) %>% select(model)```), the estimated mean survival rate was ```r signif(N.Phi.hats.Jags$Phihats$mean, 3)``` (SD = ```r signif(N.Phi.hats.Jags$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats.Jags$Phihats$lcl, 3)``` - ```r signif(N.Phi.hats.Jags$Phihats$ucl, 2)```]). These estimates are less than those from Mark. I'm not sure what's happening here. They should be the same model. I looked for obvious errors, e.g., incorrect model files, model statements, etc. But, I did not find anything there. This needs to be investigated a bit more. 2021-08-16. 
+Using the best model (```r BKS.models.df[1,] %>% select(model)```), the estimated mean survival rate was ```r signif(N.Phi.hats.Jags$Phihats$mean, 3)``` (SD = ```r signif(N.Phi.hats.Jags$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats.Jags$Phihats$lcl, 3)``` - ```r signif(N.Phi.hats.Jags$Phihats$ucl, 2)```]). These estimates are less than those from Mark. I'm not sure what's happening here. They should be the same model. I looked for obvious errors, e.g., incorrect model files, model statements, etc. But, I did not find anything there. This needs to be investigated a bit more. 2021-08-16. 
 
 I think the problem is the recapture rate is very small - the vast majority of turtles were caught just once. Does Mark drop those that were caught just once? It makes no sense to have such high survival rate if many were caught just once... 
 

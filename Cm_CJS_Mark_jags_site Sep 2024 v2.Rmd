@@ -239,6 +239,8 @@ knitr::kable(test3sr.overall.df,
 
 #### TES3.Sm {-}
 
+This test compares the expected time of first recapture since the occasion (i) between those that were captured first time at occasion (i) and those that were captured first time prior to the occasion (i). 
+
 TEST3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again. "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
 
 ```{r test3.sm, echo=F, include=F, cache=T}
@@ -264,7 +266,7 @@ knitr::kable(test3sm.overall.df,
 
 #### TEST2.CT {-}
 
-TEST2.CT tests the hypothesis that "there is no difference in the probability of being recaptured at t+1 between those captured and not captured at occasion t, conditional on presence at both occasions.  
+This test examines the recapture probability among individuals at occasions t and t+1, given they are present at both occasions. 
 
 ```{r test2ct, echo=F, include=F}
 test2ct.overall <- lapply(test2ct_Cm, 
@@ -278,7 +280,9 @@ test2ct.overall <- lapply(test2ct_Cm,
 test2ct.overall.df <- data.frame(do.call(rbind, test2ct.overall))
 ```
 
-All datasets, except PAO, passed test2.ct (Table \@ref(tab:table-test2ct)).
+All datasets, except PAO, passed test2.ct (Table \@ref(tab:table-test2ct)). 
+
+FIGURE OUT WHAT HAPPENED AT PAO. 
 
 ```{r table-test2ct, echo=F, include=T}
 knitr::kable(test2ct.overall.df, 
@@ -319,10 +323,11 @@ knitr::kable(test2cl.overall.df,
 
 ```
 
-All tests indicate that almost all datasets passed the GOF tests. (except Test3.sr for GNO, which resulted in NAs... and PAO Test2.ct, which had p < 0.05). Possible reasons for these possible violations are discussed later.  
+All tests indicate that almost all datasets passed the GOF tests. (except PAO Test2.ct AND BKS for test2.CL, which had p < 0.05). Possible reasons for these possible violations are discussed later.  
 
 For the following analyses, estimated capture probabilities that were less than 0.001 were considered unreliable and eliminated. 
 
+### Site spcific analysis {-}
 
 #### BKS summary statistics {-}
 
@@ -331,7 +336,19 @@ loc <- "BKS"
 dat.1.Cm.site <- filter(dat.1.Cm, Macro_site == loc)
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", loc, ".rds"))
 
-loc.stats <- capture.recapture.stats(loc, dat.1.Cm.site, save.fig,
+n.indivs <- length(unique(dat.1.Cm.site$ID))
+
+ID.df <- data.frame(ID = unique(dat.1.Cm.site$ID),
+                    ID.num = as.factor(1:n.indivs))
+
+dat.1.Cm.site %>% 
+  left_join(ID.df, by = "ID") %>% 
+  dplyr::rename(original.ID = ID, 
+         ID = ID.num) -> dat.1.Cm.site.newID
+
+loc.stats <- capture.recapture.stats(loc, 
+                                     dat.1.Cm.site.newID, 
+                                     save.fig = T,
                                      fig.height = fig.height, fig.width = fig.width)
 
 CJS.data <- loc.stats$CJS.data
@@ -341,14 +358,14 @@ n.caps <- loc.stats$n.caps
 
 ```
 
-At ```r loc```, there were ```r nrow(CJS.data$data)``` turtles in the dataset, which contained ```r ncol(CJS.data$data)``` capture occasions from ```r colnames(CJS.data$data)[1]``` to ```r colnames(CJS.data$data)[ncol(CJS.data$data)]```. However, the numbers of turtles caught per capture occasion before ```r Cm.inputs$first.sample.date``` were insufficient to be included in CMR analyses (Figure \@ref(fig:plot-recap-n-BKS)). Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date``` to ```r max(dat.1.Cm.site$DATE)``` were used in the analysis (Figure \@ref(fig:plot-Cap-His-BKS). 
+At ```r loc```, there were ```r nrow(CJS.data$data)``` turtles in the dataset, which contained ```r ncol(CJS.data$data)``` capture occasions from ```r colnames(CJS.data$data)[1]``` to ```r colnames(CJS.data$data)[ncol(CJS.data$data)]```. However, the numbers of turtles caught per capture occasion before ```r Cm.inputs$first.sample.date$first.sample.date``` were insufficient to be included in CMR analyses (Figure \@ref(fig:plot-recap-n-BKS)). Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date$first.sample.date``` to ```r max(dat.1.Cm.site$DATE)``` were used in the analysis (Figure \@ref(fig:plot-Cap-His-BKS)). 
 
 
 ```{r plot-recap-n-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="The number of recaptures of green turtles at each capture occasion at BKS. "}
 knitr::include_graphics(paste0("figures/Cm_recaptures_", loc, ".png"))
 ```
 
-There were ```r ncol(Cm.inputs$CJS.data$data)``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)``` (Figure \@ref(fig:plot-recap-n-BKS). The number of captures per individual ranged from ```r min(rowSums(CJS.data$data))``` to ```r max(rowSums(CJS.data$data))``` with the median of ```r median(rowSums(CJS.data$data))``` and the mean of ```r signif(mean(rowSums(CJS.data$data)), 2)``` (Figure \@ref(fig:plot-Cap-n-BKS). 
+There were ```r ncol(Cm.inputs$CJS.data$data)``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)``` (Figure \@ref(fig:plot-recap-n-BKS)). The number of captures per individual ranged from ```r min(rowSums(CJS.data$data))``` to ```r max(rowSums(CJS.data$data))``` with the median of ```r median(rowSums(CJS.data$data))``` and the mean of ```r signif(mean(rowSums(CJS.data$data)), 2)``` (Figure \@ref(fig:plot-Cap-n-BKS)). 
 
 
 ```{r plot-Cap-His-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Capture histories of tagged green turtles at BKS. Each filled circle indicates a capture event and the same individuals are connected by lines."}
@@ -360,8 +377,10 @@ knitr::include_graphics(paste0("figures/Cm_capture_history_", loc, ".png"))
 knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 ```
 
+#### Survival and abundance estimates
 
 ##### Mark (Phi[.]p[t]) {-}
+
 For this study area, the best model was a constant survival and time-dependent capture probabilities (Phi[~1]p[time], \@ref(tab:table-model-BKS)). The second best model with $\delta$AICc = 1.45 (Phi[tsm]p[time]) indicated survival may be a function of time-since-marking, which is an evidence of presence of transient animals.   
 
 ```{r r table-models-BKS, echo=F, include=T}

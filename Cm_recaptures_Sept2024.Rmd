@@ -24,7 +24,7 @@ Pull out one site at a time, then look at how turtles were recaptured.
 
 ```{r}
 
-dat.1.Cm <- get.data.Cm.2023("data/240925_Base datos_Cm_2001-2023.csv")
+dat.1.Cm <- get.data.Cm.2023("data/240925_Base datos_Cm_2001-2023 TE.csv")
 
 # Group by community and create CJS data for each community
 site.names <- levels(dat.1.Cm$Macro_site)

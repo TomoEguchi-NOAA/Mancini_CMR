@@ -37,7 +37,7 @@ PAO = 2001-08
 ```{r warning=F}
 #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
 #dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
-dat.1.Cm <- get.data.Cm.2023("data/240925_Base datos_Cm_2001-2023.csv")
+dat.1.Cm <- get.data.Cm.2023("data/240925_Base datos_Cm_2001-2023 TE.csv")
 
 # Group by community and create CJS data for each community
 site.names <- levels(dat.1.Cm$Macro_site)

@@ -187,16 +187,30 @@ n.captures <- function(x){
   return(x)
 }
 
-stats.Bayesian_v5 <- function(model.ID, loc){
+stats.Bayesian_v5 <- function(model.ID, Phi.spec, p.spec, loc){
   #models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
   
   Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_v5_M", model.ID, "_", loc, ".rds"))
   
   Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_input_v5_", loc, ".rds"))
   
-  real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
+  Phi.par <- switch(Phi.spec,
+                    "~1" = "mean.phi",
+                    "~time" = "phi[",
+                    "~tsm" = "phi[")
   
-  N.Phi.hats <- extract.Nhats.jags_v5(Cm.inputs, real.estimates)
+  p.par <- switch(p.spec,
+                    "~1" = "mean.p",
+                    "~time" = "p[")
+
+  real.estimates <- Cm.results$summary %>% 
+    as.data.frame() %>% 
+    rownames_to_column("parameter")
+  
+  params <- list(phi = Phi.par,
+                 p = p.par)
+  
+  N.Phi.hats <- extract.Nhats.jags_v5(Cm.inputs, real.estimates, params)
   return(N.Phi.hats)  
 }
 
@@ -245,7 +259,7 @@ extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
   return(out.list)
 }
 
-extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
+extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates, params){
   #data.0 <- Cm.inputs$CJS.data$data
   data.0 <- Cm.inputs$CH
   Nhats <- real.estimates[grep("N[", real.estimates$parameter, fixed = T),] %>%
@@ -258,7 +272,7 @@ extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
               Rhat = Rhat,
               season = colnames(data.0))
   
-  Phihats <- real.estimates[grep("phi", real.estimates$parameter, fixed = T),] %>%
+  Phihats <- real.estimates[grep(params$phi, real.estimates$parameter, fixed = T),] %>%
     transmute(parameter = parameter,
               mean = mean,
               sd = sd,
@@ -267,6 +281,15 @@ extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
               ucl = `97.5%`,
               Rhat = Rhat)
   
+  phats <- real.estimates[grep(params$p, real.estimates$parameter, fixed = T),] %>%
+    transmute(parameter = parameter,
+              mean = mean,
+              sd = sd,
+              lcl = `2.5%`,
+              median = `50%`,
+              ucl = `97.5%`,
+              Rhat = Rhat)
+
   Gammahats <- real.estimates[grep("gamma", real.estimates$parameter, fixed = T),] %>%
     transmute(parameter = parameter,
               mean = mean,
@@ -278,6 +301,7 @@ extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
   
   out.list <- list(Nhats = Nhats,
                    Phihats = Phihats,
+                   phats = phats,
                    Gammahats = Gammahats)
   return(out.list)
 }

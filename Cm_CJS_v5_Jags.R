@@ -99,6 +99,17 @@ for (k in 1:length(site.names)){
                   "mean.phi",  "phi",
                   "beta.p", "mean.p", "p",    
                   "deviance")
+  
+  jags.data <- list(y = CH, 
+                    f = first.cap, 
+                    nind = nInd, 
+                    n.occasions = dim(CH)[2],
+                    n = ns, 
+                    T = ncol(CH),
+                    dt = c(0, delta.dates),
+                    mean.K = 2000,
+                    n.caught = as.vector(colSums(CH)),
+                    m = m)
   k3 <- 2
   for (k3 in 1:2){
     if (length(grep("effort", models.MARK[k, paste0("model.", k3)])) > 0){
@@ -106,37 +117,16 @@ for (k in 1:length(site.names)){
       dat.1.Cm.site <- filter(dat.1.Cm, 
                               Macro_site == site.names[k]) 
       
-      first.sample <- first.sample(site.names[k])    
+      first.sample. <- first.sample(site.names[k])    
       
       dat.2.Cm.site <- filter(dat.1.Cm.site, 
-                              DATE >= first.sample$first.sample.date)
+                              DATE >= first.sample.$first.sample.date)
       
       dat.2.Cm.site %>% select(season, "DATE") %>% 
         group_by(season) %>% #-> tmp3
         summarise(effort = n_distinct(DATE)) -> effort.season
       
-      jags.data <- list(y = CH, 
-                        f = first.cap, 
-                        nind = nInd, 
-                        n.occasions = dim(CH)[2],
-                        n = ns, 
-                        T = ncol(CH),
-                        dt = c(0, delta.dates),
-                        mean.K = 2000,
-                        m = m,
-                        x = as.vector(effort.season$effort))
-      
-    } else {
-      
-      jags.data <- list(y = CH, 
-                        f = first.cap, 
-                        nind = nInd, 
-                        n.occasions = dim(CH)[2],
-                        n = ns, 
-                        T = ncol(CH),
-                        dt = c(0, delta.dates),
-                        mean.K = 2000,
-                        m = m)
+      jags.data$x <- as.vector(effort.season$effort)
       
     }
     

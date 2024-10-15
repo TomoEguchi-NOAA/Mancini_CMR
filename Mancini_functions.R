@@ -21,7 +21,8 @@ first.sample <- function(site.name){
   
 } 
 
-Nhats_comparison <- function(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
+Nhats_comparison <- function(loc, Model.ID.Mark, Model.ID.Jags,
+                             N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
                              fig.height, fig.width){
   
   #Abundance estimates between the two models were similar?
@@ -38,49 +39,54 @@ Nhats_comparison <- function(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
     geom_errorbar(aes(x = N_mean_Jags, ymin = N_lcl_Mark, ymax = N_ucl_Mark)) +
     geom_errorbarh(aes(y = N_mean_Mark, xmin = N_lcl_Jags, xmax = N_ucl_Jags)) +
     geom_abline(slope = 1, intercept = 0, color = "red") +
-    ylab("MLE") + xlab("Bayesian") +
+    ylab(paste0("MLE (M", Model.ID.Mark, ")")) + 
+    xlab(paste0("Bayesian (M", Model.ID.Jags, ")")) +
     labs(title = loc)
   
   if (save.fig)
     ggsave(plot = p.Nhats.comparison, 
-           filename = paste0("figures/Cm_2023_Nhats_comp_", loc, ".png"),
+           filename = paste0("figures/Cm_2023_Nhats_comp_", loc, 
+                             "_M", Model.ID.Mark, "_M", Model.ID.Jags, ".png"),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
 }
 
 plot.Nhats.Jags <- function(loc, 
+                            Model.ID,
                             N.Phi.p.hats.Jags, 
                             save.fig, 
                             fig.height, fig.width, ext = "jags_v5.png"){
-  p.Nhats <- ggplot(data = N.Phi.hats.Jags$Nhats) +
+  p.Nhats <- ggplot(data = N.Phi.p.hats.Jags$Nhats) +
     geom_point(aes(x = season, y = (mean))) +
     geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
     ylab("Abundance (95% CI)") +
-    labs(title = loc)
+    labs(title = paste0(loc, " (Bayesian, Model ", Model.ID, ")"))
   
   if (save.fig)
     ggsave(plot = p.Nhats, 
-           filename = paste0("figures/Cm_2023_Nhats_", loc, "_", ext),
+           filename = paste0("figures/Cm_2023_Nhats_", loc, "_M", Model.ID, "_", ext),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
   #return(p.Nhats)
 }
 
-
-
-plot.Nhats.Mark <- function(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width){
+plot.Nhats.Mark <- function(loc, 
+                            Model.ID, 
+                            N.Phi.p.hats.Mark, 
+                            save.fig, 
+                            fig.height, fig.width){
   p.Nhats <- ggplot(data = N.Phi.p.hats.Mark$Nhats) +
     geom_point(aes(x = season, y = (Nhat))) +
     geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
     ylab("Abundance (95% CI)") +
-    labs(title = loc)
+    labs(title = paste0(loc, " (MLE, Model ", Model.ID, ")"))
   
   if (save.fig)
     ggsave(plot = p.Nhats, 
-           filename = paste0("figures/Cm_2023_Nhats_", loc, ".png"),
+           filename = paste0("figures/Cm_2023_Nhats_", loc, "_M", Model.ID, ".png"),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
@@ -192,7 +198,7 @@ stats.Bayesian_v5 <- function(model.ID, Phi.spec, p.spec, loc){
   
   Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_v5_M", model.ID, "_", loc, ".rds"))
   
-  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_input_v5_", loc, ".rds"))
+  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_input_v5_M", model.ID,"_", loc, ".rds"))
   
   Phi.par <- switch(Phi.spec,
                     "~1" = "mean.phi",
@@ -208,9 +214,12 @@ stats.Bayesian_v5 <- function(model.ID, Phi.spec, p.spec, loc){
     rownames_to_column("parameter")
   
   params <- list(phi = Phi.par,
-                 p = p.par)
+                 p = p.par,
+                 p.trans = "prop.trans")
   
   N.Phi.hats <- extract.Nhats.jags_v5(Cm.inputs, real.estimates, params)
+  
+  N.Phi.hats$Model.ID <- model.ID
   return(N.Phi.hats)  
 }
 
@@ -299,10 +308,20 @@ extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates, params){
               ucl = `97.5%`,
               Rhat = Rhat)
   
+  p.trans <- real.estimates[grep("prop.trans", real.estimates$parameter, fixed = T),] %>%
+    transmute(parameter = parameter,
+              mean = mean,
+              sd = sd,
+              lcl = `2.5%`,
+              median = `50%`,
+              ucl = `97.5%`,
+              Rhat = Rhat)
+  
   out.list <- list(Nhats = Nhats,
                    Phihats = Phihats,
                    phats = phats,
-                   Gammahats = Gammahats)
+                   Gammahats = Gammahats,
+                   p.trans = p.trans)
   return(out.list)
 }
 

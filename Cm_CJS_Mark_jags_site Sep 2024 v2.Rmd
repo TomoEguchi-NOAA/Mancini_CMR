@@ -391,10 +391,11 @@ Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"
 BKS.model.comp <- model.table(Cm.results.Mark)
 BKS.model.comp$Model <- paren2bracket(BKS.model.comp$model)
 
-knitr::kable(data.frame(model = BKS.model.comp$Model,
+knitr::kable(data.frame(ID = rownames(BKS.model.comp),
+                        model = BKS.model.comp$Model,
                         deltaAICc = BKS.model.comp %>% select(DeltaAICc)), 
              digits = 2,
-             col.names = c("model", "DeltaAICc"),
+             col.names = c("ID", "model", "DeltaAICc"),
              row.names = F,
              caption = paste0("Model comparison for site ", loc),
              table.attr = "style='width:30%;'")
@@ -415,23 +416,37 @@ N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs,
                                    real.estimates.1)
 
 N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, 
-                                   Cm.results.Mark, 
-                                   real.estimates.2)
+                                     Cm.results.Mark, 
+                                     real.estimates.2)
 plot.Nhats.Mark(loc, 
+                Model.ID = "4",
                 N.Phi.p.hats.Mark.1, 
+                save.fig, fig.height, fig.width)
+
+plot.Nhats.Mark(loc, 
+                Model.ID = "11",
+                N.Phi.p.hats.Mark.2, 
                 save.fig, fig.height, fig.width)
 
 ```
 
-Survival estimates from the TSM model, however, indicated that these estimates are not reliable. For example, the two estimates of survival were `r signif(real.estimates.2[1, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[1, "lcl"], 3)` - `r signif(real.estimates.2[1, "ucl"], 3)` and `r signif(real.estimates.2[2, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[2, "lcl"], 3)` - `r signif(real.estimates.2[2, "ucl"], 3)`. Because the first survival rate includes transients, it has to be less than the second. Further, the large confidence interval for the first survival rate indicated the suspicious nature of the estimate. 
+Survival estimates from the TSM model, however, indicated that these estimates are not reliable. For example, the two estimates of survival were `r signif(real.estimates.2[1, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[1, "lcl"], 3)` - `r signif(real.estimates.2[1, "ucl"], 3)` and `r signif(real.estimates.2[2, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[2, "lcl"], 3)` - `r signif(real.estimates.2[2, "ucl"], 3)`. Because the first survival rate includes transients, it has to be less than the second. Further, the large confidence interval for the first survival rate indicated that these estimates are unreliable.  
 
 Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats.Mark.1$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats.Mark.1$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats.Mark.1$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats.Mark.1$Phihats[1, "ucl"], 2)```]).  
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-BKS)).
 
-```{r plot-Nhats-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, ".png"))
+```{r plot-Nhats-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M4.png"))
 ```
+
+
+```{r plot-Nhats-BKS-M11, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M11.png"))
+```
+
+Because the difference in AICc values between the two top models (M4 and M11) was `r signif(BKS.model.comp[2,"DeltaAICc"], 3)`, I model-averaged the abundance estimates between the two models, where the original weights of these models including 12 other models were `r signif(BKS.model.comp[1,"weight"], 3)` and `r signif(BKS.model.comp[2, "weight"], 3)`, respectively. But... because of the questionable survival estimates from the second best model (above), I don't think we should be averaging the estimates. 
+
 
 ##### Bayesian {-}
 
@@ -439,11 +454,12 @@ knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, ".png"))
 # v5 means that the same model and dataset as what Mark selected. 
 
 N.Phi.p.hats.Jags <- stats.Bayesian_v5(rownames(BKS.model.comp)[1], 
-                                     Phi.spec = BKS.model.comp[1, "Phi"],
-                                     p.spec = BKS.model.comp[1, "p"],
-                                     loc)
+                                       Phi.spec = BKS.model.comp[1, "Phi"],
+                                       p.spec = BKS.model.comp[1, "p"],
+                                       loc)
 
 plot.Nhats.Jags(loc, 
+                Model.ID = N.Phi.p.hats.Jags$Model.ID,
                 N.Phi.p.hats.Jags, 
                 save.fig, 
                 fig.height, 
@@ -454,18 +470,19 @@ plot.Nhats.Jags(loc,
 
 Using the best model (`r BKS.model.comp[1,"model"]`), the estimated mean survival rate was ```r signif(N.Phi.p.hats.Jags$Phihats$mean, 3)``` (SE = ```r signif(N.Phi.p.hats.Jags$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats.Jags$Phihats$lcl, 3)``` - ```r signif(N.Phi.p.hats.Jags$Phihats$ucl, 2)```]). These estimates are less than those from Mark. I'm not sure what's happening here. They should be the same model. I looked for obvious errors, e.g., incorrect model files, model statements, etc. But, I did not find anything there. This needs to be investigated a bit more. 2021-08-16. 
 
-I think the problem is the recapture rate is very small - the vast majority of turtles were caught just once. Does Mark drop those that were caught just once? It makes no sense to have such high survival rate if many were caught just once... 
+I think a problem is that the recapture rate is very small - the vast majority of turtles were caught just once. Does Mark drop those that were caught just once? It makes no sense to have such high survival rate if many were caught just once... 
 
-Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 3)``` with large uncertainty (Figure \@ref(fig:plot-Nhats-jags-v5-BKS)), which likely resulted from small numbers of recaptures. These estimates were significantly lower than those from MARK (Figure \@ref(fig:plot-Nhats-comparison-BKS)). 
+Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 3)``` with large uncertainty (Figure \@ref(fig:plot-Nhats-jags-v5-BKS)), which likely resulted from small numbers of recaptures.  The estimated abundances fluctuated from year to year where high estimates were followed by low estimates (Figure \@ref(fig:plot-Nhats-jags-v5-BKS)). These estimates were significantly lower than those from MARK and widths of credible intervals were less than those of confidence intervals from Mark (Figure \@ref(fig:plot-Nhats-comparison-BKS)).
 
 ```{r plot-Nhats-jags-v5-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the Bayesian approach, the Phi[~1]p[t] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_jags_v5.png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M", N.Phi.p.hats.Jags$Model.ID, "_jags_v5.png"))
 ```
 
 
 ```{r Nhats_comparison_BKS, echo=F, include=F}
 #Abundance estimates between the two models were similar?
-Nhats_comparison(loc, N.Phi.p.hats.Mark.1, 
+Nhats_comparison(loc, "4", N.Phi.p.hats.Jags$Model.ID,
+                 N.Phi.p.hats.Mark.1, 
                  N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
 
@@ -473,21 +490,36 @@ Nhats_comparison(loc, N.Phi.p.hats.Mark.1,
 ```
 
 
-```{r plot-Nhats-comparison-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS using MLE (Mark) and the Bayesian approach and the Phi[.]p[t] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals (CI). The red line indicates y = x."}
-knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, ".png"))
+```{r plot-Nhats-comparison-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS using MLE (Mark) and the Bayesian approach and the Phi[.]p[t] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals. The red line indicates y = x."}
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M4_M", N.Phi.p.hats.Jags$Model.ID, ".png"))
 ```
 
-Look at the second best model with the Bayesian approach.
+Look at the second best model with the Bayesian approach. This model (M11) specifies the survival rate to be affected by time-since-marking, where two survival rates are defined for the first capture and subsequent captures, and time dependent capture probabilities. In this model, the proportion of transients can be calculated from these two survival rates (Mark book, Chapter 7).   
 
-```{r}
+```{r parameter-estimates-M11, echo=FALSE, include=FALSE}
 
-N.Phi.p.hats.Jags <- stats.Bayesian_v5(rownames(BKS.model.comp)[2], 
+N.Phi.p.hats.Jags.M11 <- stats.Bayesian_v5(rownames(BKS.model.comp)[2], 
                                      Phi.spec = BKS.model.comp[2, "Phi"],
                                      p.spec = BKS.model.comp[2, "p"],
                                      loc)
 
+plot.Nhats.Jags(loc, 
+                Model.ID = N.Phi.p.hats.Jags.M11$Model.ID,
+                N.Phi.p.hats.Jags.M11, 
+                save.fig, 
+                fig.height, 
+                fig.width, 
+                ext = "jags_v5.png")
+
 ```
 
+
+
+```{r plot-Nhats-jags-v5-BKS-M11, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the Bayesian approach, the Phi[~1]p[t] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M", N.Phi.p.hats.Jags.M11$Model.ID, "_jags_v5.png"))
+```
+
+Abundance estimates from M11 were more precise than those from M4 (Figure \@ref(fig:plot-Nhats-jags-v5-BKS-M11)). From the two survival estimates of this model (`r signif(N.Phi.p.hats.Jags.M11$Gammahats[1,"mean"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.M11$Gammahats[1,"lcl"], 3)` - `r signif(N.Phi.p.hats.M11$Gammahats[1,"ucl"], 3)`] and `r signif(N.Phi.p.hats.Jags.M11$Gammahats[2,"mean"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.M11$Gammahats[2,"lcl"], 3)` - `r signif(N.Phi.p.hats.M11$Gammahats[2,"ucl"], 3)`]) indicated that there were a large proportion of transients (`r signif(N.Phi.p.hats.Jags.M11$p.trans[1,"mean"] * 100, 3)`%, 95% CI = [`r signif(N.Phi.p.hats.Jags.M11$p.trans[1,"lcl"] * 100, 3)`% - `r signif(N.Phi.p.hats.Jags.M11$p.trans[1,"ucl"] * 100,3)`%]). 
 
 
 #### CL_BMA summary statistics {-}

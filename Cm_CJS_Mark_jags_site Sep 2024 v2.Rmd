@@ -76,21 +76,15 @@ New data file was received on 2024-09-26
 
 To estimate survival rate and abundance of green turtles, Cormack-Jolly-Seber (CJS) models were fitted to the capture-recapture dataset for green turtles. Results indicated that apparent changes in abundance might have been caused by sampling inequalities among study sites. In order to remove the inequalities, CJS models were fitted to data from each study site independently. This was justified by the lack of movements by turtles among the study sites. 
 
-Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (Phi) and capture/recapture probability (p).  The abundance may be estimated through the Horvitz-Thompson estimator, where the number of captured individuals per sampling period is divided by the estimated capture probability for that time period. The estimated survival rate should be considered as an apparent survival rate as the permanent emigrant is considered as dead.  Effects of transients, however, can be determined.   
+Briefly, the CJS model uses the capture history of each individual without assuming that the population is closed. There are two main parameters in the basic model; survival rate (Phi) and capture/recapture probability (p).  The abundance may be estimated through the Horvitz-Thompson estimator, where the number of captured individuals per sampling period is divided by the estimated capture probability for that time period. The estimated survival rate should be considered as an apparent survival rate as the permanent emigrant is considered as dead. Effects of transients, however, can be determined.   
 
-The basic model can be extended to accommodate various modifications, such as time-dependent survival rates, time-dependent capture probability, covariate-dependent survival rates and capture probabilities.
+The basic model can be extended to accommodate various modifications, where capture probability and survival rates can be treated as time-dependent and covariate-dependent. In this analysis, survival rates were assumed to be either a constant or affected by transients (time-since-marking; tsm). For capture probabilities, they were treated as either a constant, time dependent, different between the first and subsequent captures (trap response), different between summer and winter, or a function of effort. A total of 14 models were fitted to the data (Table \@ref(tab:model-defs)).
 
-Communities with small proportions (< 0.05) of recaptures, i.e., the number of individuals caught more than once in the total number of individuals, were excluded from the analysis because of insufficient numbers of recaptures. 
+Communities with small proportions (< 0.05) of recaptures, i.e., the number of individuals caught more than once in the total number of individuals, were excluded from the analysis because of insufficient numbers of recaptures. Capture history data from each study area with sufficient numbers of recaptures were pooled by sampling seasons (summer and winter). In other words, multiple captures within each season were treated as one capture. Some capture events in the beginning of a few time series were deleted because of the small numbers of captures. CJS models were then fitted to capture-recapture data using software Mark (White and Cooch Yr) via RMark (v. `r packageVersion("RMark")`, Laake 2013, Laake, J.L. (2013). RMark: An R Interface for Analysis of Capture-Recapture Data with MARK. AFSC Processed Rep 2013-01, 25p. Alaska Fish. Sci. Cent., NOAA, Natl. Mar. Fish. Serv., 7600 Sand Point Way NE, Seattle WA 98115.).  For each location, fit of various models were compared using AICc.  We used software UCare through R2ucare (v. `r packageVersion("R2ucare")`, Olivier Gimenez, Jean-Dominique Lebreton, Remi Choquet and Roger Pradel (2017). R2ucare: Goodness-of-Fit Tests for Capture-Recapture Models. R package version 1.0.0. https://CRAN.R-project.org/package=R2ucare) to test for goodness-of-fit. 
 
-Capture history data from each study area with sufficient numbers of recaptures were pooled by sampling seasons (summer and winter). In other words, multiple captures within each season were treated as one capture. 
+The best models for each location were also fitted using the Bayesian equivalent CJS models (Kery an Schaub 2012; Bayesian population analysis using WinBUGS. Academic Press, Elsevier, Waltham MA, USA) using JAGS (v. 4.3.0, Plummer 2017) via the jagsUI package (v. `r packageVersion("jagsUI")`, Kellner 2019, Ken Kellner (2019). jagsUI: A Wrapper Around 'rjags' to Streamline 'JAGS' Analyses. R package version 1.5.1. https://CRAN.R-project.org/package=jagsUI) in R (`r paste0(R.Version()$major, ".", R.Version()$minor)`, R Core Team). To obtain the joint posterior distribution of parameters through Markov chain Monte Carlo (MCMC), we ran 5 chains of 50,000 steps where the first 30,000 samples were discarded as burn-in samples. The remaining 20,000 samples were thinned by taking every five samples. Posterior distributions were summarized using the resulting 20,000 samples (4,000 x 5 chains). Convergence of MCMC was determined using Gelman-Rubin statistics (Rhat).  
 
-I considered several possible CJS models for this analysis. For survival rates, they were treated as either constant or affected by transients (time-since-marking; tsm). For capture probabilities, they were treated as either constant, time dependent, different between the first and subsequent captures (trap response), different between summer and winter, or a function of effort. A total of 14 models were fitted to the data (Table \@ref(tab:model-defs)).
-
-Capture-recapture data of green turtles were separated into study areas and CJS models were fitted using Mark (White and Cooch Yr) via RMark (v. `r packageVersion("RMark")`, Laake 2013, Laake, J.L. (2013). RMark: An R Interface for Analysis of Capture-Recapture Data with MARK. AFSC Processed Rep 2013-01, 25p. Alaska Fish. Sci. Cent., NOAA, Natl. Mar. Fish. Serv., 7600 Sand Point Way NE, Seattle WA 98115.). Some capture events in the beginning of a few time series were deleted because of the small numbers of captures. For each location, fit of various models were compared using AICc. Parameters estimates from the model with the smallest AICc value are reported. We used UCare through R2ucare (v. `r packageVersion("R2ucare")`, Olivier Gimenez, Jean-Dominique Lebreton, Remi Choquet and Roger Pradel (2017). R2ucare: Goodness-of-Fit Tests for Capture-Recapture Models. R package version 1.0.0. https://CRAN.R-project.org/package=R2ucare) to test for goodness-of-fit. 
-
-The best models for each location were also fitted using the Bayesian equivalent (Kery an Schaub 2012; Bayesian population analysis using WinBUGS. Academic Press, Elsevier, Waltham MA, USA) using JAGS (v. 4.3.0, Plummer 2017) via the jagsUI package (v. `r packageVersion("jagsUI")`, Kellner 2019, Ken Kellner (2019). jagsUI: A Wrapper Around 'rjags' to Streamline 'JAGS' Analyses. R package version 1.5.1. https://CRAN.R-project.org/package=jagsUI) in R (`r paste0(R.Version()$major, ".", R.Version()$minor)`, R Core Team). To obtain the joint posterior distribution of parameters through Markov chain Monte Carlo (MCMC), we ran 5 chains of 50,000 steps where the first 30,000 samples were discarded as burn-in samples. The remaining 20,000 samples were thinned by taking every five sample. Posterior distributions were summarized using the resulting 20,000 samples (4,000 x 5 chains). Convergence of MCMC was determined using Gelman-Rubin statistics.  
-
-Using the two different approaches to analyze the capture-recapture data allowed us to determine if reliable estimates were obtained for each dataset, especially with small numbers of recaptures. Although the model structures between the maximum-likelihood and Bayesian approaches are different, estimates should be similar if the data supported the models. We graphically show the correlation between estimates obtained from the two approaches. In the best case scenario, the estimates from the two approaches should fall on the y=x line with similar uncertainties. Large departures between the approaches indicate that estimates are likely not reliable.  
+Using the two different approaches to analyze the capture-recapture data allowed us to determine if reliable estimates were obtained for each dataset, especially with small numbers of recaptures. Although the model structures between the maximum-likelihood (Mark) and Bayesian (Jags) approaches were different, estimates should be similar if the data supported the models. We graphically show the correlation between estimates obtained from the two approaches. In the best case scenario, the estimates from the two approaches should fall on the y=x line with similar uncertainties. Large departures between the approaches indicate that estimates may not be reliable.  
 
 
 ```{r data, echo=FALSE, include=T}
@@ -128,7 +122,7 @@ mark.table$Model <- paren2bracket(mark.table$model) #%>% tilde12dot()
 
 knitr::kable(mark.table %>% select(ID, Model) %>% arrange(by = as.numeric(ID)),
              digits = 2,
-             caption = "Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates a constant.",
+             caption = "Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates a constant. 'sum_win' indicates seasonal effect.",
              table.attr = "style='width:30%;'",
              booktabs = TRUE) 
 #%>%
@@ -137,11 +131,9 @@ knitr::kable(mark.table %>% select(ID, Model) %>% arrange(by = as.numeric(ID)),
 ```
 
 ## Results {-}
-Of ```r length(site.names)``` communities, only ```r length(site.names.used)``` communities contained sufficient recaptures. Data for  ```r length(site.names) - length(site.names.used)```  communities were not used in the following analysis. Goodness of fit of CJS models was examined for each study area. Results from each site are provided separately in the following sections.
+Of ```r length(site.names)``` communities, only ```r length(site.names.used)``` communities contained the sufficient numbers of recaptures. Data for  ```r length(site.names) - length(site.names.used)```  communities were not used in the following analysis. Goodness of fit of CJS models was examined for each study area. 
 
 ### Goodness of fit {-}
-
-These results should be in a supplementary material. 
 
 ```{r GOF, echo=F, include=F, cache=T, warning=F}
 
@@ -188,32 +180,19 @@ overall.GOF.df <- data.frame(do.call(rbind, overall.GOF))
 ```
 
 #### Overall test {-}
-The goodness of fit tests indicated that the models fit well to the data and no apparent overdispersion was found in all sites (c-hat < 1.2, Table \@ref(tab:table-overall-GOF)). 
-
-```{r check_GNO_data, echo=F, include=F}
-output.filename <- paste0("RData/CJS_Cm_2023_RMark_input_GNO.rds")
-GNO_data <- readRDS(file = output.filename)
-#CH.Ucare <-R2ucare::group_data(CJS.data$data, effX = rep(1, nrow(CJS.data$data)))
-CH.Ucare <- GNO_data$CH.R2ucare
-GNO_overall <- overall_CJS(as.matrix(CH.Ucare[, 1:(ncol(CH.Ucare)-1)]), 
-                           freq = CH.Ucare$effY)
-
-
-
-```
-
+The goodness of fit tests indicated that the models generally fit well to the data and no apparent overdispersion was found at all sites (c-hat < 1.2, Table \@ref(tab:table-overall-GOF)). 
 
 ```{r table-overall-GOF, echo=F, include=T}
 knitr::kable(overall.GOF.df, 
              digits = 2,
-             col.names = c("site", "Chi2", "df", "p val", "c-hat"),
-             caption = "Results from overall goodness-of fit",
+             col.names = c("Site", "Chi2", "df", "p value", "c-hat"),
+             caption = "Results from overall goodness-of fit. Site abbreviations are listed in the text. Chi2 = chi-squared value, df = degrees of freedom.",
              table.attr = "style='width:30%;'")
 
 ```
 
-#### TEST3.SR {-}
-A test to determine if there is a difference in apparent survival among individuals (TEST3.SR) indicated that there was no observed differences (Table \@ref(tab:table-test3sr)). This test is based on calculating the proportion of captured individuals on a capture date that was recaptured in later dates. 
+#### Test3.SR {-}
+There was no observed differences in apparent survival among individuals (Test3.SR, Table \@ref(tab:table-test3sr)). This test is based on calculating the proportion of captured individuals on a capture date that was recaptured in later dates. 
 
 ```{r test3sr, echo=FALSE, include=T}
 test3sr.overall <- lapply(test3sr_Cm, 
@@ -230,18 +209,18 @@ test3sr.overall.df <- data.frame(do.call(rbind, test3sr.overall))
 
 ```{r table-test3sr, echo=F, include=T}
 knitr::kable(test3sr.overall.df, 
-             digits = 2,
-             col.names = c("site", "Stat", "df", "p val", "signed test"),
-             caption = "Results from Test3.sr, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
-             table.attr = "style='width:30%;'")
+             #digits = c(1, 1, 1, 1),
+             col.names = c("Site", "Stat", "df", "p value", "signed test"),
+             caption = "Results from Test3.SR, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
+             table.attr = "style='width:50%;'")
 
 ```
 
-#### TES3.Sm {-}
+#### Test3.Sm {-}
 
 This test compares the expected time of first recapture since the occasion (i) between those that were captured first time at occasion (i) and those that were captured first time prior to the occasion (i). 
 
-TEST3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again. "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
+Test3.Sm tests the hypothesis that there is no difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once. It looks at individuals who were seen again. "Among these individuals seen again, when they were seen again does not depend on whether or not they were seen for the first time at occasion (i)."
 
 ```{r test3.sm, echo=F, include=F, cache=T}
 test3sm.overall <- lapply(test3sm_Cm, 
@@ -254,17 +233,17 @@ test3sm.overall <- lapply(test3sm_Cm,
 test3sm.overall.df <- data.frame(do.call(rbind, test3sm.overall))
 ```
 
-All datasets passed test3.sm (Table \@ref(tab:table-test3sm)).
+All datasets passed test3.sm (Table \@ref(tab:table-test3sm)). MUL did not have sufficient numbers of recaptured turtles the test. 
 
 ```{r table-test3sm, echo=F, include=T}
 knitr::kable(test3sm.overall.df, 
              digits = 2,
              col.names = c("site", "Stat", "df", "p val"),
-             caption = "Results from Test3.sm, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
+             caption = "Results from Test3.Sm, which evaluates difference in the expected time of first recapture between the ‘new’ and ‘old’ individuals captured at occasion i and seen again at least once",
              table.attr = "style='width:30%;'")
 ```
 
-#### TEST2.CT {-}
+#### Test2.CT {-}
 
 This test examines the recapture probability among individuals at occasions t and t+1, given they are present at both occasions. 
 
@@ -280,7 +259,7 @@ test2ct.overall <- lapply(test2ct_Cm,
 test2ct.overall.df <- data.frame(do.call(rbind, test2ct.overall))
 ```
 
-All datasets, except PAO, passed test2.ct (Table \@ref(tab:table-test2ct)). 
+All datasets, except PAO, passed test2.ct (Table \@ref(tab:table-test2ct)). MUL did not have sufficient numbers of recaptured turtles the test.
 
 FIGURE OUT WHAT HAPPENED AT PAO. 
 
@@ -293,9 +272,9 @@ knitr::kable(test2ct.overall.df,
              table.attr = "style='width:30%;'")
 ```
 
-#### TEST2.CL {-}
+#### Test2.CL {-}
 
-TEST2.CL tests if there is no difference in the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t and t + 2.  
+TEST2.CL tests if there is a difference in the expected time of next capture between the individuals captured and not captured at occasion t conditional on presence at both occasions t and t + 2.  
 
 ```{r test2cl, echo=F, include=F, warning=F}
 # The null hypothesis being tested in TEST2.CL is that there is no difference in
@@ -312,7 +291,7 @@ test2cl.overall <- lapply(test2cl_Cm,
 test2cl.overall.df <- data.frame(do.call(rbind, test2cl.overall))
 ```
 
-All datasets, except BKS, passed test2.cl (Table \@ref(tab:table-test2cl)).
+All datasets, except BKS, passed test2.cl (Table \@ref(tab:table-test2cl)). MUL did not have sufficient numbers of recaptured turtles the test.
 
 ```{r table-test2cl, echo=F, include=T}
 knitr::kable(test2cl.overall.df, 
@@ -323,7 +302,7 @@ knitr::kable(test2cl.overall.df,
 
 ```
 
-All tests indicate that almost all datasets passed the GOF tests. (except PAO Test2.ct AND BKS for test2.CL, which had p < 0.05). Possible reasons for these possible violations are discussed later.  
+All tests indicated that almost all datasets passed the GOF tests. (except PAO Test2.ct AND BKS for test2.CL, which had p < 0.05). Possible reasons for these possible violations are discussed later.  
 
 For the following analyses, estimated capture probabilities that were less than 0.001 were considered unreliable and eliminated. 
 
@@ -358,15 +337,14 @@ n.caps <- loc.stats$n.caps
 
 ```
 
-At ```r loc```, there were ```r nrow(CJS.data$data)``` turtles in the dataset, which contained ```r ncol(CJS.data$data)``` capture occasions from ```r colnames(CJS.data$data)[1]``` to ```r colnames(CJS.data$data)[ncol(CJS.data$data)]```. However, the numbers of turtles caught per capture occasion before ```r Cm.inputs$first.sample.date$first.sample.date``` were insufficient to be included in CMR analyses (Figure \@ref(fig:plot-recap-n-BKS)). Consequently, the capture histories of ```r nrow(Cm.inputs$CH.1)``` individual turtles from ```r Cm.inputs$first.sample.date$first.sample.date``` to ```r max(dat.1.Cm.site$DATE)``` were used in the analysis (Figure \@ref(fig:plot-Cap-His-BKS)). 
+At `r loc`, there were `r nrow(CJS.data$data)` turtles in the dataset, which contained `r ncol(CJS.data$data)` capture occasions from `r colnames(CJS.data$data)[1]` to `r colnames(CJS.data$data)[ncol(CJS.data$data)]`. However, the numbers of turtles caught per capture occasion before `r Cm.inputs$first.sample.date$first.sample.date` were insufficient to be included in CMR analyses (Figure \@ref(fig:plot-recap-n-BKS)). Consequently, the capture histories of `r nrow(Cm.inputs$CH.1)` individual turtles from `r Cm.inputs$first.sample.date$first.sample.date` to `r max(dat.1.Cm.site$DATE)` were used in the analysis (Figure \@ref(fig:plot-Cap-His-BKS)). 
 
 
 ```{r plot-recap-n-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="The number of recaptures of green turtles at each capture occasion at BKS. "}
 knitr::include_graphics(paste0("figures/Cm_recaptures_", loc, ".png"))
 ```
 
-There were ```r ncol(Cm.inputs$CJS.data$data)``` capture occasions and the number of captured turtles per capture occasion ranged from ```r min(n.caught, na.rm = T)``` to ```r max(n.caught, na.rm = T)``` (Figure \@ref(fig:plot-recap-n-BKS)). The number of captures per individual ranged from ```r min(rowSums(CJS.data$data))``` to ```r max(rowSums(CJS.data$data))``` with the median of ```r median(rowSums(CJS.data$data))``` and the mean of ```r signif(mean(rowSums(CJS.data$data)), 2)``` (Figure \@ref(fig:plot-Cap-n-BKS)). 
-
+There were `r ncol(Cm.inputs$CJS.data$data)` capture occasions and the number of captured turtles per capture occasion ranged from `r min(n.caught, na.rm = T)` to `r max(n.caught, na.rm = T)` (Figure \@ref(fig:plot-recap-n-BKS)). The number of captures per individual ranged from `r min(rowSums(CJS.data$data))` to `r max(rowSums(CJS.data$data))` with the median of `r median(rowSums(CJS.data$data))` and the mean of `r signif(mean(rowSums(CJS.data$data)), 2)` (Figure \@ref(fig:plot-Cap-n-BKS)). 
 
 ```{r plot-Cap-His-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Capture histories of tagged green turtles at BKS. Each filled circle indicates a capture event and the same individuals are connected by lines."}
 knitr::include_graphics(paste0("figures/Cm_capture_history_", loc, ".png"))
@@ -379,10 +357,9 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 
 #### Survival and abundance estimates
 
-##### Mark (Phi[.]p[t]) {-}
+##### Mark (Phi[~1]p[time]) {-}
 
 For this study area, the best model was a constant survival and time-dependent capture probabilities (Phi[~1]p[time] (Table \@ref(tab:table-models-BKS)). The second best model with $\delta$AICc = `r signif(BKS.model.comp[2, "DeltaAICc"], 3)` (`r BKS.model.comp$Model[2]`) indicated that survival may be a function of time-since-marking, which may suggest presence of transient animals. This may be the cause for failing the test2.cl (Null hypothesis: no difference in the expected time of next recapture between the individuals captured and not captured at occasion i conditional on presence at both occasions i and i+2.). 
-
 
 ```{r r table-models-BKS, echo=F, include=T}
 
@@ -395,7 +372,8 @@ knitr::kable(data.frame(ID = rownames(BKS.model.comp),
                         model = BKS.model.comp$Model,
                         deltaAICc = BKS.model.comp %>% select(DeltaAICc)), 
              digits = 2,
-             col.names = c("ID", "model", "DeltaAICc"),
+             col.names = c("ID", "model", "$\\Delta$AICc"),
+             escape = FALSE,
              row.names = F,
              caption = paste0("Model comparison for site ", loc),
              table.attr = "style='width:30%;'")
@@ -430,11 +408,11 @@ plot.Nhats.Mark(loc,
 
 ```
 
-Survival estimates from the TSM model, however, indicated that these estimates are not reliable. For example, the two estimates of survival were `r signif(real.estimates.2[1, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[1, "lcl"], 3)` - `r signif(real.estimates.2[1, "ucl"], 3)` and `r signif(real.estimates.2[2, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[2, "lcl"], 3)` - `r signif(real.estimates.2[2, "ucl"], 3)`. Because the first survival rate includes transients, it has to be less than the second. Further, the large confidence interval for the first survival rate indicated that these estimates are unreliable.  
+Survival estimates from the TSM model, however, indicated that these estimates may not be reliable. For example, the two estimates of survival were `r signif(real.estimates.2[1, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[1, "lcl"], 3)` - `r signif(real.estimates.2[1, "ucl"], 3)` and `r signif(real.estimates.2[2, "estimate"], 3)` with its 95%CI = `r signif(real.estimates.2[2, "lcl"], 3)` - `r signif(real.estimates.2[2, "ucl"], 3)`. Because the first survival rate includes transients, it has to be less than the second. Further, the large confidence interval for the first survival rate indicated that these estimates are unreliable.  
 
-Using the best model, the survival rate was estimated to be ```r signif(N.Phi.p.hats.Mark.1$Phihats[1,"estimate"], 3)``` (SE = ```r signif(N.Phi.p.hats.Mark.1$Phihats[1, "se"], 3)```, 95% CI = [```r signif(N.Phi.p.hats.Mark.1$Phihats[1, "lcl"], 2)``` - ```r signif(N.Phi.p.hats.Mark.1$Phihats[1, "ucl"], 2)```]).  
+Using the best model, the survival rate was estimated to be `r signif(N.Phi.p.hats.Mark.1$Phihats[1,"estimate"], 3)` (SE = `r signif(N.Phi.p.hats.Mark.1$Phihats[1, "se"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.Mark.1$Phihats[1, "lcl"], 2)` - `r signif(N.Phi.p.hats.Mark.1$Phihats[1, "ucl"], 2)`]).  
 
-Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T),2)``` to ```r format(signif(max(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T), 5), big.mark = ",")``` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-BKS)).
+Estimated mean seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T),2)` to `r format(signif(max(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T), 5), big.mark = ",")` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-BKS)).
 
 ```{r plot-Nhats-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M4.png"))
@@ -444,9 +422,6 @@ knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M4.png"))
 ```{r plot-Nhats-BKS-M11, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze the capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M11.png"))
 ```
-
-Because the difference in AICc values between the two top models (M4 and M11) was `r signif(BKS.model.comp[2,"DeltaAICc"], 3)`, I model-averaged the abundance estimates between the two models, where the original weights of these models including 12 other models were `r signif(BKS.model.comp[1,"weight"], 3)` and `r signif(BKS.model.comp[2, "weight"], 3)`, respectively. But... because of the questionable survival estimates from the second best model (above), I don't think we should be averaging the estimates. 
-
 
 ##### Bayesian {-}
 
@@ -468,11 +443,11 @@ plot.Nhats.Jags(loc,
 
 ```
 
-Using the best model (`r BKS.model.comp[1,"model"]`), the estimated mean survival rate was ```r signif(N.Phi.p.hats.Jags$Phihats$mean, 3)``` (SE = ```r signif(N.Phi.p.hats.Jags$Phihats$sd, 3)```, 95% CI = [```r signif(N.Phi.hats.Jags$Phihats$lcl, 3)``` - ```r signif(N.Phi.p.hats.Jags$Phihats$ucl, 2)```]). These estimates are less than those from Mark. I'm not sure what's happening here. They should be the same model. I looked for obvious errors, e.g., incorrect model files, model statements, etc. But, I did not find anything there. This needs to be investigated a bit more. 2021-08-16. 
+Using the best model (`r BKS.model.comp[1,"model"]`), the estimated mean survival rate was `r signif(N.Phi.p.hats.Jags$Phihats$mean, 3)` (SE = `r signif(N.Phi.p.hats.Jags$Phihats$sd, 3)`, 95% CI = [`r signif(N.Phi.hats.Jags$Phihats$lcl, 3)` - `r signif(N.Phi.p.hats.Jags$Phihats$ucl, 2)`]). These estimates are less than those from Mark. I'm not sure what's happening here. They should be the same model. I looked for obvious errors, e.g., incorrect model files, model statements, etc. But, I did not find anything there. This needs to be investigated a bit more. 2021-08-16. 
 
 I think a problem is that the recapture rate is very small - the vast majority of turtles were caught just once. Does Mark drop those that were caught just once? It makes no sense to have such high survival rate if many were caught just once... 
 
-Estimated mean seasonal abundance fluctuated over time, which ranged from ```r signif(min(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 2)``` to ```r signif(max(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 3)``` with large uncertainty (Figure \@ref(fig:plot-Nhats-jags-v5-BKS)), which likely resulted from small numbers of recaptures.  The estimated abundances fluctuated from year to year where high estimates were followed by low estimates (Figure \@ref(fig:plot-Nhats-jags-v5-BKS)). These estimates were significantly lower than those from MARK and widths of credible intervals were less than those of confidence intervals from Mark (Figure \@ref(fig:plot-Nhats-comparison-BKS)).
+Estimated mean seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 2)` to `r signif(max(N.Phi.p.hats.Jags$Nhats$mean, na.rm = T), 3)` with large uncertainty (Figure \@ref(fig:plot-Nhats-jags-v5-BKS)), which likely resulted from small numbers of recaptures. The estimated abundances fluctuated from year to year where high estimates were followed by low estimates (Figure \@ref(fig:plot-Nhats-jags-v5-BKS)). These estimates were significantly lower than those from MARK and widths of credible intervals were less than those of confidence intervals from Mark (Figure \@ref(fig:plot-Nhats-comparison-BKS)).
 
 ```{r plot-Nhats-jags-v5-BKS, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at BKS when the Bayesian approach, the Phi[~1]p[t] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M", N.Phi.p.hats.Jags$Model.ID, "_jags_v5.png"))

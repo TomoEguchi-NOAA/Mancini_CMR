@@ -330,6 +330,18 @@ loc.stats <- capture.recapture.stats(loc,
                                      save.fig = T,
                                      fig.height = fig.height, fig.width = fig.width)
 
+loc.stats$n.caps %>% 
+  filter(n == 1) %>% 
+  left_join(dat.1.Cm.site.newID, by = "ID") -> indiv.one.cap
+
+loc.stats$n.caps %>% 
+  filter(n > 1) %>% 
+  left_join(dat.1.Cm.site.newID, by = "ID") %>%  
+  group_by(ID) %>% 
+  summarise(ID = first(ID),
+            first.CCL = first(CCL)) -> indiv.two.or.more.cap
+
+
 CJS.data <- loc.stats$CJS.data
 n.occ <- loc.stats$n.occ
 n.caught <- loc.stats$n.caught

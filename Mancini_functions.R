@@ -105,7 +105,7 @@ capture.recapture.stats <- function(loc,
   n.caught <- colSums(CJS.data$data)
   
   p.captures <- ggplot(dat.1.Cm.community) + 
-    geom_point(aes(x = DATE,  y = ID)) +
+    geom_point(aes(x = DATE,  y = ID, color = CCL)) +
     geom_path(aes(x = DATE, y = ID)) +
     theme(axis.text.y = element_blank()) +
     labs(title = loc)

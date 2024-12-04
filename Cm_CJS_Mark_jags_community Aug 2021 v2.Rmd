@@ -21,7 +21,7 @@ library(reshape)
 library(RMark)
 library(R2ucare)
 #library(loo)
-library(kableExtra)
+#library(kableExtra)
 
 source("Mancini_functions.R")
 save.fig <- F
@@ -121,9 +121,7 @@ mark.table$Model <- paren2bracket(mark.table$model) #%>% tilde12dot()
 
 knitr::kable(mark.table %>% select(ID, Model) %>% arrange(by = as.numeric(ID)),
              digits = 2,
-             caption = "Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates a constant.",
-             table.attr = "style='width:30%;'",
-             booktabs = TRUE) 
+             caption = "Definitions of 14 CJS models fitted to CMR data of green turtles. '~1' indicates a constant.") 
 #%>%
 #  row_spec(14, hline_after = T)
 

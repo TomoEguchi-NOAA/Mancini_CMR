@@ -1,6 +1,28 @@
 
+first.sample <- function(site.name){
+  first.sample.season <- switch(site.name,
+                                "BKS" = "2015-01",
+                                "CL_BMA" = "2001-08",
+                                "GNO" = "2001-08",
+                                "CI_IES" = "2006-01",
+                                #"LSI" = "2002-08-01",
+                                "MUL" = "2008-08",
+                                "PAO" = "2001-08")
+  
+  year <- unlist(str_split(first.sample.season, "-") )[1] %>% as.numeric()
+  season.begin <- unlist(str_split(first.sample.season, "-") )[2]
+  first.sample.date <- as.Date(ifelse(season.begin == "01",
+                                      as.Date(paste0(year-1, "-10-01")),
+                                      as.Date(paste0(year, "-05-01"))),
+                               format = "%Y-%m-%d") 
+  
+  return(list(first.sample.season = first.sample.season,
+              first.sample.date = first.sample.date))
+  
+} 
 
-Nhats_comparison <- function(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
+Nhats_comparison <- function(loc, Model.ID.Mark, Model.ID.Jags,
+                             N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
                              fig.height, fig.width){
   
   #Abundance estimates between the two models were similar?
@@ -17,60 +39,73 @@ Nhats_comparison <- function(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
     geom_errorbar(aes(x = N_mean_Jags, ymin = N_lcl_Mark, ymax = N_ucl_Mark)) +
     geom_errorbarh(aes(y = N_mean_Mark, xmin = N_lcl_Jags, xmax = N_ucl_Jags)) +
     geom_abline(slope = 1, intercept = 0, color = "red") +
-    ylab("MLE") + xlab("Bayesian") +
+    ylab(paste0("MLE (M", Model.ID.Mark, ")")) + 
+    xlab(paste0("Bayesian (M", Model.ID.Jags, ")")) +
     labs(title = loc)
   
   if (save.fig)
     ggsave(plot = p.Nhats.comparison, 
-           filename = paste0("figures/Cm_Nhats_comp_", loc, ".png"),
+           filename = paste0("figures/Cm_2023_Nhats_comp_", loc, 
+                             "_M", Model.ID.Mark, "_M", Model.ID.Jags, ".png"),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
 }
 
-plot.Nhats.Jags <- function(loc, N.Phi.p.hats.Jags, save.fig, fig.height, fig.width, ext = "jags_v5.png"){
-  p.Nhats <- ggplot(data = N.Phi.hats.Jags$Nhats) +
+plot.Nhats.Jags <- function(loc, 
+                            Model.ID,
+                            N.Phi.p.hats.Jags, 
+                            save.fig, 
+                            fig.height, fig.width, ext = "jags_v5.png"){
+  p.Nhats <- ggplot(data = N.Phi.p.hats.Jags$Nhats) +
     geom_point(aes(x = season, y = (mean))) +
     geom_errorbar(aes(x = season, ymin = (lcl), ymax = (ucl))) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
     ylab("Abundance (95% CI)") +
-    labs(title = loc)
+    labs(title = paste0(loc, " (Bayesian, Model ", Model.ID, ")"))
   
   if (save.fig)
     ggsave(plot = p.Nhats, 
-           filename = paste0("figures/Cm_Nhats_", loc, "_", ext),
+           filename = paste0("figures/Cm_2023_Nhats_", loc, "_M", Model.ID, "_", ext),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
+  #return(p.Nhats)
 }
 
-
-
-plot.Nhats.Mark <- function(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width){
+plot.Nhats.Mark <- function(loc, 
+                            Model.ID, 
+                            N.Phi.p.hats.Mark, 
+                            save.fig, 
+                            fig.height, fig.width){
   p.Nhats <- ggplot(data = N.Phi.p.hats.Mark$Nhats) +
     geom_point(aes(x = season, y = (Nhat))) +
     geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
     ylab("Abundance (95% CI)") +
-    labs(title = loc)
+    labs(title = paste0(loc, " (MLE, Model ", Model.ID, ")"))
   
   if (save.fig)
     ggsave(plot = p.Nhats, 
-           filename = paste0("figures/Cm_Nhats_", loc, ".png"),
+           filename = paste0("figures/Cm_2023_Nhats_", loc, "_M", Model.ID, ".png"),
            height = fig.height, width = fig.width,
            device = "png", dpi = 600)
   
+  #return(p.Nhats)
 }
 
-
-
-capture.recapture.stats <- function(loc, dat.1.Cm.community, Cm.inputs, save.fig, fig.height, fig.width){
+capture.recapture.stats <- function(loc, 
+                                    dat.1.Cm.community, 
+                                    #Cm.inputs, 
+                                    save.fig = FALSE, 
+                                    fig.height = 4, 
+                                    fig.width = 6){
   
   CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
   n.occ <- ncol(CJS.data$data)
   n.caught <- colSums(CJS.data$data)
   
   p.captures <- ggplot(dat.1.Cm.community) + 
-    geom_point(aes(x = DATE,  y = ID)) +
+    geom_point(aes(x = DATE,  y = ID, color = CCL)) +
     geom_path(aes(x = DATE, y = ID)) +
     theme(axis.text.y = element_blank()) +
     labs(title = loc)
@@ -100,10 +135,15 @@ capture.recapture.stats <- function(loc, dat.1.Cm.community, Cm.inputs, save.fig
   rownames(tmp.counts.df) <- 1:max(tmp.counts)
   colnames(tmp.counts.df) <- colnames(CJS.data$data)
   tmp.counts.df <- rownames_to_column(tmp.counts.df, var = "n.recaptures")
-  tmp.counts.df %>% pivot_longer(!n.recaptures, names_to = "Date", values_to = "Freq") -> counts.freq
+  tmp.counts.df %>% 
+    pivot_longer(!n.recaptures, 
+                 names_to = "Season", 
+                 values_to = "Freq") -> counts.freq
 
   p.n.recap <- ggplot(counts.freq) + 
-    geom_col(aes(x = Date, y = Freq, fill = n.recaptures)) + 
+    geom_col(aes(x = Season, 
+                 y = Freq, 
+                 fill = n.recaptures)) + 
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
           legend.position = "top") +
     ylab("# individuals") + labs(fill = "# recaptures", title = loc)
@@ -117,7 +157,10 @@ capture.recapture.stats <- function(loc, dat.1.Cm.community, Cm.inputs, save.fig
   loc.stats <- list(CJS.data = CJS.data,
                     n.occ = n.occ,
                     n.caught = n.caught,
-                    n.caps = n.caps)
+                    n.caps = n.caps,
+                    plots = list(captures = p.captures,
+                                 n.captures = p.n.captures,
+                                 n.recap = p.n.recap))
     
   return(loc.stats)
 }
@@ -150,16 +193,33 @@ n.captures <- function(x){
   return(x)
 }
 
-stats.Bayesian_v5 <- function(models.MARK, loc){
-  models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
+stats.Bayesian_v5 <- function(model.ID, Phi.spec, p.spec, loc){
+  #models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
   
-  Cm.results <- readRDS(file = paste0("RData/CJS_Cm_jags_v5_M", model.ID, "_", loc, ".rds"))
+  Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_v5_M", model.ID, "_", loc, ".rds"))
   
-  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_jags_input_v5_", loc, ".rds"))
+  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_input_v5_M", model.ID,"_", loc, ".rds"))
   
-  real.estimates <- Cm.results$summary %>% as.data.frame() %>% rownames_to_column("parameter")
+  Phi.par <- switch(Phi.spec,
+                    "~1" = "mean.phi",
+                    "~time" = "phi[",
+                    "~tsm" = "phi[")
   
-  N.Phi.hats <- extract.Nhats.jags_v5(Cm.inputs, real.estimates)
+  p.par <- switch(p.spec,
+                    "~1" = "mean.p",
+                    "~time" = "p[")
+
+  real.estimates <- Cm.results$summary %>% 
+    as.data.frame() %>% 
+    rownames_to_column("parameter")
+  
+  params <- list(phi = Phi.par,
+                 p = p.par,
+                 p.trans = "prop.trans")
+  
+  N.Phi.hats <- extract.Nhats.jags_v5(Cm.inputs, real.estimates, params)
+  
+  N.Phi.hats$Model.ID <- model.ID
   return(N.Phi.hats)  
 }
 
@@ -208,7 +268,7 @@ extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
   return(out.list)
 }
 
-extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
+extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates, params){
   #data.0 <- Cm.inputs$CJS.data$data
   data.0 <- Cm.inputs$CH
   Nhats <- real.estimates[grep("N[", real.estimates$parameter, fixed = T),] %>%
@@ -221,7 +281,7 @@ extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
               Rhat = Rhat,
               season = colnames(data.0))
   
-  Phihats <- real.estimates[grep("phi", real.estimates$parameter, fixed = T),] %>%
+  Phihats <- real.estimates[grep(params$phi, real.estimates$parameter, fixed = T),] %>%
     transmute(parameter = parameter,
               mean = mean,
               sd = sd,
@@ -230,7 +290,25 @@ extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
               ucl = `97.5%`,
               Rhat = Rhat)
   
+  phats <- real.estimates[grep(params$p, real.estimates$parameter, fixed = T),] %>%
+    transmute(parameter = parameter,
+              mean = mean,
+              sd = sd,
+              lcl = `2.5%`,
+              median = `50%`,
+              ucl = `97.5%`,
+              Rhat = Rhat)
+
   Gammahats <- real.estimates[grep("gamma", real.estimates$parameter, fixed = T),] %>%
+    transmute(parameter = parameter,
+              mean = mean,
+              sd = sd,
+              lcl = `2.5%`,
+              median = `50%`,
+              ucl = `97.5%`,
+              Rhat = Rhat)
+  
+  p.trans <- real.estimates[grep("prop.trans", real.estimates$parameter, fixed = T),] %>%
     transmute(parameter = parameter,
               mean = mean,
               sd = sd,
@@ -241,7 +319,9 @@ extract.Nhats.jags_v5 <- function(Cm.inputs, real.estimates){
   
   out.list <- list(Nhats = Nhats,
                    Phihats = Phihats,
-                   Gammahats = Gammahats)
+                   phats = phats,
+                   Gammahats = Gammahats,
+                   p.trans = p.trans)
   return(out.list)
 }
 
@@ -309,7 +389,7 @@ do_analysis <- function(dp, ddl)
   cml <- create.model.list("CJS")
   
   # run all all models and return as a list with class marklist
-  results <- mark.wrapper(cml,
+  results <- mark.wrapper(model.list = cml,
                           data=dp,
                           ddl=ddl,
                           output=FALSE,
@@ -451,6 +531,43 @@ get.data.Cm <- function(filename){
               sex = Sex,
               species = as.factor(Sp_code),
               community = Community_code)-> dat.1
+  
+  return(dat.1)
+}
+
+get.data.Cm.2023 <- function(filename){
+  col.def <- cols(Season = col_character(),
+                  Year = col_integer(),
+                  Month = col_integer(),
+                  Day = col_integer(),
+                  Region = col_character(),
+                  Macro_site = col_character(),
+                  Site_code = col_character(),
+                  Date = col_date(format = "%m/%d/%Y"),
+                  TurtleID = col_character(),
+                  Site_name = col_character(),
+                  Recapture = col_character(),
+                  Rtag_new = col_character(),
+                  Ltag_new = col_character(),
+                  Rtag_old = col_character(),
+                  Ltag_old = col_character(),
+                  SCL = col_double(),
+                  CCL = col_double(),
+                  Weight = col_double(),
+                  Data_ownership = col_character())
+  
+  dat.1 <- read_csv(file = filename, col_types = col.def)
+  
+  dat.1 %>% mutate(ID = as.factor(TurtleID)) %>% 
+    transmute(ID = ID,
+              detect = 1,
+              DATE = Date,
+              SCL = SCL,
+              CCL = CCL,
+              weight_kg = Weight,
+              season = Season,
+              community = as.factor(Site_code),
+              Macro_site = as.factor(Macro_site))-> dat.1
   
   return(dat.1)
 }

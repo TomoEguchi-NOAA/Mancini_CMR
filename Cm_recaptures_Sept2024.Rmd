@@ -1,0 +1,188 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Visually inspecting capture recapture data of green turtles from Agnes Mancini.
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(lubridate)
+library(reshape)
+library(ggridges)
+
+source("Mancini_functions.R")
+
+# from https://stackoverflow.com/questions/5831794/opposite-of-in-exclude-rows-with-values-specified-in-a-vector
+`%ni%` <- Negate(`%in%`)
+
+save.fig <- F
+```
+
+Pull out one site at a time, then look at how turtles were recaptured. 
+
+```{r}
+
+dat.1.Cm <- get.data.Cm.2023("data/240925_Base datos_Cm_2001-2023 TE.csv")
+
+# Group by community and create CJS data for each community
+site.names <- levels(dat.1.Cm$Macro_site)
+p.recap <- vector(mode = "numeric")
+
+k <- 1
+for (k in 1:length(site.names)){
+  dat.1.Cm.site <- dat.1.Cm %>% filter(Macro_site == site.names[k])
+  CJS.data <- dat2CJS(dat.1.Cm.site, 
+                        save.file = FALSE)
+  n.GT2.cap <- length(which(rowSums(CJS.data$data) > 1))
+  p.recap[k] <- n.GT2.cap/nrow(CJS.data$data)
+    
+}
+
+useful.site <- site.names[p.recap > 0.05]
+
+dat.1.Cm %>% filter(Macro_site %in% useful.site) -> dat.2.Cm
+loc.stats <- list()
+for (k in 1:length(useful.site)){
+  loc.stats[[k]] <- capture.recapture.stats(useful.site[k],
+                                            dat.2.Cm %>% filter(Macro_site == useful.site[k]),
+                                            save.fig = F)
+}
+
+```
+
+In each loc.stats list item, a figure of the number of recaptures can be found in loc.stats[[k]]$plots$n.recap. From this plot, I select the starting season for each location. 
+
+
+```{r}
+loc.stats[[1]]$plots$n.recap
+
+
+```
+
+For BKS, the number of captures were very low until the winter of 2015 (2015-01). So, I removed the first four seasons.
+
+```{r}
+dat.2.Cm %>% filter(Macro_site == "BKS") %>%
+  filter(season %ni% c("2012-08", "2013-08", "2014-01", "2014-08")) -> dat.3.Cm.BKS
+
+loc.stats.BKS <- capture.recapture.stats("BKS",
+                                         dat.3.Cm.BKS,
+                                         save.fig = F)
+
+loc.stats.BKS$plots$n.recap
+```
+
+
+```{r}
+loc.stats[[2]]$plots$n.recap
+
+```
+
+For CI_IES, the first season (2005-08) will be removed.
+
+```{r}
+
+dat.2.Cm %>% filter(Macro_site == "CI_IES") %>%
+  filter(season %ni% c("2005-08")) -> dat.3.Cm.CI_IES
+
+loc.stats.CI_IES <- capture.recapture.stats("CI_IES",
+                                            dat.3.Cm.CI_IES,
+                                            save.fig = F)
+
+loc.stats.CI_IES$plots$n.recap
+
+
+```
+
+
+```{r}
+loc.stats[[3]]$plots$n.recap
+
+
+```
+
+CL_BMA looks good. 
+
+```{r}
+loc.stats[[4]]$plots$n.recap
+
+
+```
+
+This site needs to be removed. Not possible to estimate abundance from these captures. 
+
+```{r}
+useful.site[useful.site != "CPU"] -> useful.site.1 
+```
+
+
+```{r}
+loc.stats[[5]]$plots$n.recap
+
+
+```
+
+For GNO, it's difficult to see how many were caught in the first few years from 
+this plot.
+
+```{r}
+
+dat.2.Cm %>% filter(Macro_site == "GNO") %>%
+  filter(DATE < as.Date("2004-01-01")) -> temp.GNO
+
+loc.stats.temp.GNO <- capture.recapture.stats("GNO",
+                                            temp.GNO,
+                                            save.fig = F)
+
+loc.stats.temp.GNO$plots$n.recap
+
+```
+
+This may be okay... 
+
+
+
+```{r}
+loc.stats[[6]]$plots$n.recap
+
+
+```
+
+For MUL, I remove the first two seasons.
+
+```{r}
+
+dat.2.Cm %>% filter(Macro_site == "MUL") %>%
+  filter(season %ni% c("2006-01", "2008-01")) -> dat.3.Cm.MUL
+
+loc.stats.MUL <- capture.recapture.stats("MUL",
+                                         dat.3.Cm.MUL,
+                                         save.fig = F)
+
+loc.stats.MUL$plots$n.recap
+
+
+```
+
+
+```{r}
+loc.stats[[7]]$plots$n.recap
+
+
+```
+
+
+PAO looks good. So, starting seasons for these sites are:
+
+BKS = 2015-01
+CI_IES = 2006-01
+CL_BMA = 2001-08
+GNO = 2001-08
+MUL = 2008-08
+PAO = 2001-08
+
+
+
+

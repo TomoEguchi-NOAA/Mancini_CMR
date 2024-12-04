@@ -3,6 +3,7 @@ title: "Capture recapture analyses for Agnese Mancini"
 output: html_notebook
 ---
 
+September 2024. Updated with new data and data structure
 October 2020.
 
 This document describes data analysis of Agnese Mancini's data of green turtle capture recapture events. IN this version, we use community (sampling site) specific data for estimating survival/capture probability, and derived abundance using CJS models. 
@@ -28,24 +29,26 @@ Bring in the data file and get ready for CJS. Some communities did not have larg
 
 ```{r warning=F}
 #dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
-
-dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+#dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+dat.1.Cm <- get.data.Cm.2023("data/Base datos_Cm_2001-2023.csv")
 
 # Group by community and create CJS data for each community
 community.names <- levels(as.factor(dat.1.Cm$community))
 
 # some communities don't have enough recaptures to do CMR modeling
 c <- 0
-k <- 2
+k <- 4
 p.recap <- vector(mode = "numeric")
 community.names.used <- vector(mode = "character")
 
 for (k in 1:length(community.names)){
   
-  if (!file.exists(paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))){
+  if (!file.exists(paste0("RData/CJS_Cm_2023_RMark_", community.names[k], ".rds"))){
 
-    dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k]) 
-    CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
+    dat.1.Cm.community <- filter(dat.1.Cm, 
+                                 community == community.names[k]) 
+    CJS.data <- dat2CJS(dat.1.Cm.community, 
+                        save.file = FALSE)
     n.GT2.cap <- length(which(rowSums(CJS.data$data) > 1))
     p.recap[k] <- n.GT2.cap/nrow(CJS.data$data)
     
@@ -60,7 +63,8 @@ for (k in 1:length(community.names)){
                              "PAO" = "2001-08-01",
                              "PLM" = "2011-01-01")
       
-      dat.1.Cm.community <- filter(dat.1.Cm, community == community.names[k] & DATE >= as.Date(first.sample))
+      dat.1.Cm.community <- filter(dat.1.Cm, 
+                                   community == community.names[k] & DATE >= as.Date(first.sample))
       CJS.data <- dat2CJS(dat.1.Cm.community, save.file = FALSE)
       #stop()
       community.names.used[c + 1] <- community.names[k]
@@ -146,9 +150,9 @@ for (k in 1:length(community.names)){
                            run.date = Sys.Date())
       
       saveRDS(Cm.results, 
-              file = paste0("RData/CJS_Cm_RMark_", community.names[k], ".rds"))
+              file = paste0("RData/CJS_Cm_2023_RMark_", community.names[k], ".rds"))
       saveRDS(Cm.CJS.input, 
-              file = paste0("RData/CJS_Cm_RMark_input_", community.names[k], ".rds"))
+              file = paste0("RData/CJS_Cm_2023_RMark_input_", community.names[k], ".rds"))
       c <- c + 1
     } else {
       print(paste("Commuinity", community.names[k], 

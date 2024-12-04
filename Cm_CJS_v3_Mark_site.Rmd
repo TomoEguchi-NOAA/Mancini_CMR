@@ -1,0 +1,196 @@
+---
+title: "Capture recapture analyses for Agnese Mancini"
+output: html_notebook
+---
+
+September 2024. Updated with new data and data structure
+October 2020.
+
+This document describes data analysis of Agnese Mancini's data of green turtle capture recapture events. IN this version, we use community (sampling site) specific data for estimating survival/capture probability, and derived abundance using CJS models. 
+
+
+Initialize the workspace
+```{r}
+rm(list=ls())
+library(jagsUI)
+library(tidyverse)
+library(lubridate)
+library(reshape)
+library(bayesplot)
+library(ggridges)
+library(RMark)
+library(R2ucare)
+
+source("Mancini_functions.R")
+save.fig <- F
+```
+
+Bring in the data file and get ready for CJS. Some communities did not have large sample sizes (the number of captured turtles) in the starting phase. This caused some difficulties in estimating capture/recapture probabilities. So, after some frustrating days, I decided to remove these sampling periods, specifically for the beginning of each dataset. This had to be done manually. Selection of starting capture seasons is done in Cm_recaptures_Sept2024.Rmd:
+
+BKS = 2015-01
+CI_IES = 2006-01
+CL_BMA = 2001-08
+GNO = 2001-08
+MUL = 2008-08
+PAO = 2001-08
+
+```{r warning=F}
+#dat.1 <- get.data("data/GTC_20190725_Tomo_v2.csv")
+#dat.1.Cm <- get.data.Cm("data/GTC_Cm Data_updated_2020-04-28_TE_v2.csv")
+dat.1.Cm <- get.data.Cm.2023("data/240925_Base datos_Cm_2001-2023 TE.csv")
+
+# Group by community and create CJS data for each community
+site.names <- levels(dat.1.Cm$Macro_site)
+
+# In Sept 2024, we decided to use "Macro_site" as the grouping variable because
+# turtles are found in nearby capture areas (email on 2024-09-26)
+
+# some communities don't have enough recaptures to do CMR modeling
+c <- 0
+k <- 1
+p.recap <- vector(mode = "numeric")
+site.names.used <- c("BKS", "CI_IES", "CL_BMA", "GNO", "MUL", "PAO")
+
+# Selection of starting capture seasons is done in Cm_recaptures_Sept2024.Rmd
+
+for (k in 1:length(site.names.used)){
+  
+  if (!file.exists(paste0("RData/CJS_Cm_2023_RMark_", site.names.used[k], ".rds"))){
+
+    dat.1.Cm.site <- filter(dat.1.Cm, 
+                                 Macro_site == site.names.used[k]) 
+    CJS.data <- dat2CJS(dat.1.Cm.site, 
+                        save.file = FALSE)
+    n.GT2.cap <- length(which(rowSums(CJS.data$data) > 1))
+    p.recap[k] <- n.GT2.cap/nrow(CJS.data$data)
+    
+    # This has been converted into a function and moved to Mancini_functions.R
+    # so that other scripts can use it.
+    # first.sample <- switch(site.names.used[k],
+    #                        "BKS" = "2015-01",
+    #                        "CL_BMA" = "2001-08",
+    #                        "GNO" = "2001-08",
+    #                        "CI_IES" = "2006-01",
+    #                        #"LSI" = "2002-08-01",
+    #                        "MUL" = "2008-08",
+    #                        "PAO" = "2001-08")
+    # -01 is from Oct of previous year to Apr 30
+    # -08 is from May 1 to Sep 30
+    # year <- unlist(str_split(first.sample, "-") )[1] %>% as.numeric()
+    # season.begin <- unlist(str_split(first.sample, "-") )[2]
+    # first.sample.date <- as.Date(ifelse(season.begin == "01",
+    #                                     as.Date(paste0(year-1, "-10-01")),
+    #                                     as.Date(paste0(year, "-05-01"))),
+    #                              format = "%Y-%m-%d") 
+    
+    first.sample. <- first.sample(site.names.used[k])    
+    
+    dat.2.Cm.site <- filter(dat.1.Cm.site, 
+                            DATE >= first.sample.$first.sample.date)
+    
+    CJS.data <- dat2CJS(dat.2.Cm.site, save.file = FALSE)
+    #stop()
+    #community.names.used[c + 1] <- community.names[k]
+    CJS.data$data %>% rownames_to_column(var = "ID") -> CH.1 #data.CJS
+    
+    # using R2ucare::group_data to combine CHs
+    CH.2 <- R2ucare::group_data(CJS.data$data, rep(1, nrow(CJS.data$data)))
+    
+    # need to count how many capture events occurred per season
+    dat.1.Cm.site %>% select(season, "DATE") %>% 
+      group_by(season) %>% #-> tmp3
+      summarise(effort = n_distinct(DATE)) -> effort.season
+    
+    # capture history
+    tmp <- apply(as.matrix(CH.2[, 1:(ncol(CH.2)-1)]), 
+                 MARGIN = 2,
+                 FUN = paste0)
+    
+    CH <- unite(data.frame(tmp),
+                col = "ch",
+                sep = "")
+    
+    CH$freq <- CH.2$effY
+    
+    # capture dates and difference in years
+    cap.dates <- paste0(colnames(CJS.data$data), "-01")
+    delta.dates <- signif(as.numeric(as.Date(cap.dates[2:length(cap.dates)]) -
+                                       as.Date(cap.dates[1:(length(cap.dates)-1)]))/365, 1)
+    
+    # a possibility of survival changing between summer/winter?
+    tmp <- strsplit(colnames(CJS.data$data), split = "-")
+    tmp2 <- lapply(tmp, FUN = function(x) x[2])
+    tmp3 <- unlist(tmp2)
+    
+    begin.year <- year(min(dat.1.Cm.site$DATE, na.rm = T))
+    dp <- process.data(CH, 
+                       model = "CJS", 
+                       time.intervals = delta.dates,
+                       begin.time = begin.year)
+    
+    ddl <- make.design.data(dp)
+    
+    # effort affects the capture probability (p)
+    effort.season <- effort.season[1:length(levels(ddl$p$time)),]
+    
+    effort.season$time <- as.factor(begin.year + cumsum(delta.dates))
+    
+    ddl$p <- merge_design.covariates(ddl$p, df = effort.season)
+    
+    # summer/winter affects capture probability (maybe)
+    sum_win <- data.frame(sum_win = unlist(ifelse(tmp3 == "08", 
+                                                  "summer", 
+                                                  "winter")) [1:length(levels(ddl$p$time))],
+                          time = as.factor(begin.year + cumsum(delta.dates)))
+    
+    ddl$p <- merge_design.covariates(ddl$p, df = sum_win)
+    
+    # summer/winter affects survival (maybe)
+    sum_win <- data.frame(sum_win = unlist(ifelse(tmp3 == "08", 
+                                                  "summer", 
+                                                  "winter")) [1:length(levels(ddl$Phi$time))],
+                          time = as.factor(begin.year + cumsum(c(0, delta.dates[1:(length(delta.dates)-1)]))))
+    
+    ddl$Phi <- merge_design.covariates(ddl$Phi, df = sum_win)
+    
+    # add time-since-marking (TSM models) - not sure if I'm doing this right... 
+    # When age = 0, it is the first time turtles were caught group(1)
+    # all others are group(2), which are recaptures. 
+    ddl$Phi$tsm <- 1
+    ddl$Phi$tsm[ddl$Phi$age != 0] <- 2  # it used to be == 0. Doesn't look right
+    
+    ddl$p$tsm <- 1
+    ddl$p$tsm[ddl$p$age != 0] <- 2      # same here. used to be == 0
+    
+    Cm.results <- do_analysis(dp = dp, ddl = ddl)
+    
+    Cm.CJS.input <- list(raw.data = dat.1.Cm.site,
+                         first.sample.date = first.sample,
+                         CJS.data = CJS.data,
+                         CH.1 = CH.1,
+                         CH.R2ucare = CH.2,
+                         effort = effort.season,
+                         CH = CH,
+                         delta.dates = delta.dates,
+                         dp = dp,
+                         ddl = ddl,
+                         run.date = Sys.Date())
+    
+    saveRDS(Cm.results, 
+            file = paste0("RData/CJS_Cm_2023_RMark_", site.names.used[k], ".rds"))
+    saveRDS(Cm.CJS.input, 
+            file = paste0("RData/CJS_Cm_2023_RMark_input_", site.names.used[k], ".rds"))
+
+  }
+  
+}
+
+# clean up Mark output files because results are saved in .rds files. Second thought... some results (e.g., c-hat) are not available in RMark output. So, I'll keep them. Second second thought - c-hat can be computed from overall CJS results (R2ucare) - chi2/df. So, I remove them.
+cleanup(ask = F)
+```
+
+
+Model comparison is conducted in Cm_CJS_Mark_Jags_site Sep 2024.Rmd
+
+
+

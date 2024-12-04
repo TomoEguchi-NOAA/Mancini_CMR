@@ -516,8 +516,11 @@ loc <- "CL_BMA"
 dat.1.Cm.site <- filter(dat.1.Cm, Macro_site == loc)
 Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", loc, ".rds"))
 
-loc.stats <- capture.recapture.stats(loc, dat.1.Cm.site, save.fig,
-                                     fig.height = fig.height, fig.width = fig.width)
+loc.stats <- capture.recapture.stats(loc, 
+                                     dat.1.Cm.site, 
+                                     save.fig,
+                                     fig.height = fig.height, 
+                                     fig.width = fig.width)
 
 CJS.data <- loc.stats$CJS.data
 n.occ <- loc.stats$n.occ
@@ -550,7 +553,6 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 
 Estimates for the best model
 ```{r}
-loc <- "CL_BMA"
 Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
 
 CL_BMA.model.comp <- model.table(Cm.results.Mark)
@@ -648,6 +650,8 @@ Nhats_comparison(loc, "11",
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M11_M11.png"))
 ```
 
+MLE appeared to overestimate some years. Precisions of abundance estimates were generally better in the Bayesian approach than for the MLE's. It is likely that a large portion of turtles in this area was transients. 
+
 
 #### GNO {-}
 
@@ -659,15 +663,14 @@ Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", loc, ".rds"
 loc.stats <- capture.recapture.stats(loc, 
                                      dat.1.Cm.site, 
                                      save.fig,
-                                     fig.height = fig.height, fig.width = fig.width)
-
+                                     fig.height = fig.height, 
+                                     fig.width = fig.width)
 
 CJS.data <- loc.stats$CJS.data
 n.occ <- loc.stats$n.occ
 n.caught <- loc.stats$n.caught
 n.caps <- loc.stats$n.caps
 
-# DATE for GNP_200228_1_Cm_01 is missing. 
 ```
 
 At `r loc`, there were `r nrow(CJS.data$data)` turtles in the dataset. However, the numbers of turtles caught per capture occasion before `r Cm.inputs$first.sample.date` were insufficient to include in CMR analyses and excluded (Figure \@ref(fig:plot-recap-n-GNO)). Consequently, the capture histories of `r nrow(Cm.inputs$CH.1)` individual turtles from `r Cm.inputs$first.sample.date` to `r max(dat.1.Cm.site$DATE, na.rm = T)` were used in the analysis (Figure \@ref(fig:plot-Cap-His-GNO)). 
@@ -690,96 +693,111 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 ```
 
 ##### Mark {-}
-```{r model_comp_GNO, echo=F}
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
-
-GNO.models.df <- model.table(Cm.results)%>% select(model, DeltaAICc) %>% 
-  mutate(model = paren2bracket(model)) #%>%tilde12dot()
-```
 
 ```{r table-models-GNO, echo=F, include=T}
-knitr::kable(GNO.models.df, 
+
+Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
+
+GNO.model.comp <- model.table(Cm.results.Mark)
+GNO.model.comp$Model <- paren2bracket(GNO.model.comp$model)
+
+knitr::kable(data.frame(ID = rownames(GNO.model.comp),
+                        model = GNO.model.comp$Model,
+                        deltaAICc = GNO.model.comp %>% select(DeltaAICc)), 
              digits = 2,
-             col.names = c("model", "DeltaAICc"),
+             col.names = c("ID", "model", "$\\Delta$AICc"),
+             escape = FALSE,
              row.names = F,
-             caption = paste0("Table. Model comparison for site ", loc),
+             caption = paste0("Model comparison for site ", loc),
              table.attr = "style='width:30%;'")
+
+
 ```
 
 
 
 ```{r parameter_estimates_TSM_GNO, echo=F, warning=FALSE, message=FALSE}
-real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% 
+real.estimates.1 <- Cm.results.Mark$Phi.dot.p.t$results$real %>% 
   rownames_to_column("parameter")
 
-N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, Cm.results, real.estimates)
+real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.t$results$real %>% 
+  rownames_to_column("parameter")
+
+N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results, real.estimates.1)
+N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results, real.estimates.2)
 
 #plot.Nhats.Mark(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width)
 #plot.Nhats.Jags(loc, N.Phi.hats.Jags.TSM, save.fig, fig.height, fig.width, ext = "jags_TSM.png")
 
 ```
 
-Although Phi[tsm]p[t] was the best model (Table \@ref(tab:table-models-GNO)), the mean estimate of the survival rate of residents and transients was virtually 1.0 (mean = `r N.Phi.p.hats.Mark$Phihats[1, "estimate"]`) and its confidence interval ranged from virtually 0 to 1.0 . The second best model was only `r signif(GNO.models.df[2, "DeltaAICc"], 2)` AICc units away from the best model. Consequently, we used the second best model (Phi[.]p[t]) to make inference. 
+Although Phi[.]p[t] was the best model, the second best model (Phi[TSM]p[t]) was only `r signif(GNO.model.comp[2,"DeltaAICc"],3)` units away from the best model (Table \@ref(tab:table-models-GNO)), indicating possibility of having a large proportion of transients in the area. The proportion of residents was estimated to be `r signif(N.Phi.p.hats.Mark.2$Phihats[1,"estimate"]/N.Phi.p.hats.Mark.2$Phihats[2,"estimate"], 3)`, using the two survival rates (one for transients and residents and another for residents only). Strange that resident+transient survival rate is greater than that for resident only...
+  
 
 ```{r parameter_estimates_GNO, echo=F, warning=FALSE, message=FALSE}
-real.estimates <- Cm.results$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
-
 plot.Nhats.Mark(loc, 
-                N.Phi.p.hats.Mark, 
-                save.fig, 
-                fig.height, fig.width)
-#plot.Nhats.Jags(loc, N.Phi.hats.Jags.TSM, save.fig, fig.height, fig.width, ext = "jags_TSM.png")
+                Model.ID = "4",
+                N.Phi.p.hats.Mark.1, 
+                save.fig, fig.height, fig.width)
+
 
 ```
 
 
 ```{r plot-Nhats-GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles at GNO when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M4.png"))
 ```
 
-Using the Phi[.]p[t] model, the survival rate was estimated to be `r signif(N.Phi.p.hats$Phihats[1,"estimate"], 3)` (SE = `r signif(N.Phi.p.hats$Phihats[1, "se"], 3)`, 95% CI = [`r signif(N.Phi.p.hats$Phihats[1, "lcl"], 2)` - `r signif(N.Phi.p.hats$Phihats[1, "ucl"], 2)`]). 
 
-Estimated seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T), 2)` to `r format(signif(max(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T), 5), big.mark = ",")` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-GNO)).
+Using the Phi[.]p[t] model, the survival rate was estimated to be `r signif(N.Phi.p.hats.Mark.1$Phihats[1,"estimate"], 3)` (SE = `r signif(N.Phi.p.hats.Mark$Phihats[1, "se"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.Mark$Phihats[1, "lcl"], 2)` - `r signif(N.Phi.p.hats.Mark$Phihats[1, "ucl"], 2)`]). 
+
+Estimated seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T), 2)` to `r format(signif(max(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T), 5), big.mark = ",")` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-GNO)).
 
 ##### Bayesian {-}
 
 ```{r parameter_estimates_jags_v5_GNO, echo=F, include=F}
 # v5 means the same data and model as what Mark selected
-#loc <- "GNO"
-N.Phi.hats.Jags <- stats.Bayesian_v5(rownames(GNO.models.df)[1], loc)
+N.Phi.p.hats.Jags <- stats.Bayesian_v5(rownames(GNO.model.comp)[1], 
+                                       Phi.spec = GNO.model.comp[1, "Phi"],
+                                       p.spec = GNO.model.comp[1, "p"],
+                                       loc)
 
-plot.Nhats.Jags(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width, ext = "jags_v5.png")
-
-#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+plot.Nhats.Jags(loc, 
+                Model.ID = N.Phi.p.hats.Jags$Model.ID,
+                N.Phi.p.hats.Jags, 
+                save.fig, 
+                fig.height, 
+                fig.width, 
+                ext = "jags_v5.png")
 ```
 
-Using the Phi[.]p[t] model, the estimated mean survival rate was `r signif(N.Phi.hats.Jags$Phihats$mean, 3)` (SD = `r signif(N.Phi.hats.Jags$Phihats$sd, 3)`, 95% CI = [`r signif(N.Phi.hats.Jags$Phihats$lcl, 3)` - `r signif(N.Phi.hats.Jags$Phihats$ucl, 3)`]), which was less than the estimates from the ML approach.
+Using the Phi[.]p[t] model, the estimated mean survival rate was `r signif(N.Phi.p.hats.Jags$Phihats$mean, 3)` (SD = `r signif(N.Phi.p.hats.Jags$Phihats$sd, 3)`, 95% CI = [`r signif(N.Phi.p.hats.Jags$Phihats$lcl, 3)` - `r signif(N.Phi.p.hats.Jags$Phihats$ucl, 3)`]), which was less than the estimates from the ML approach.
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 2)` to `r signif(max(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 3)` with large uncertainty (Figure \@ref(fig:plot-Nhats-jags-v5-GNO)). 
 
 ```{r plot-Nhats-jags-v5-GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles including transients at GNO when the Bayesian approach, the Phi[.]p[t] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_jags_v5.png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M4_jags_v5.png"))
 ```
 
 Compare Nhats from Mark and Jags:
 
 ```{r Nhats_comparison_GNO, echo=F, include=F}
-#Abundance estimates between the two models were similar?
-Nhats_comparison(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
+Nhats_comparison(loc, "4", 
+                 N.Phi.p.hats.Jags$Model.ID,
+                 N.Phi.p.hats.Mark, 
+                 N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
-
-#p.Nhats.comparison
 ```
 
 
 ```{r plot-Nhats-comparison-GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Figure. Estimated abundance of green turtles at GNO using MLE (Mark) and the Bayesian approach and the Phi[.]p[t] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals (CI). The red line indicates y = x."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_comp_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M4_M4.png"))
 ```
 
 
 There were large differences between abundance estimates from MLE and Bayesian approaches (Figure \@ref(fig:plot-Nhats-comparison-GNO)).
 
-Not very good. Mark's estimates are a lot higher than those from Jags. There were some NAs in Nhat estiamtes for Mark as well... probably not a good one to provide estimates. 
+Not very good. Mark's estimates are a lot higher than those from Jags. There were some NAs in Nhat estimates for Mark as well... probably not a good one to provide estimates. 
 
 
 #### IES {-}

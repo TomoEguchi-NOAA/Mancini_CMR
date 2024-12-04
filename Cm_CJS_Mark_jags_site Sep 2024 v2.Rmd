@@ -716,7 +716,7 @@ knitr::kable(data.frame(ID = rownames(GNO.model.comp),
 
 
 
-```{r parameter_estimates_TSM_GNO, echo=F, warning=FALSE, message=FALSE}
+```{r parameter_estimates_GNO, echo=F, warning=FALSE, message=FALSE}
 real.estimates.1 <- Cm.results.Mark$Phi.dot.p.t$results$real %>% 
   rownames_to_column("parameter")
 
@@ -797,18 +797,21 @@ knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M4_M4.png")
 
 There were large differences between abundance estimates from MLE and Bayesian approaches (Figure \@ref(fig:plot-Nhats-comparison-GNO)).
 
-Not very good. Mark's estimates are a lot higher than those from Jags. There were some NAs in Nhat estimates for Mark as well... probably not a good one to provide estimates. 
+Bayesian estimates were more precise than those of MLEs in general. 
 
 
-#### IES {-}
+#### CI_IES {-}
 
 ```{r capture_history_IES, echo=FALSE}
-loc <- "IES"
-dat.1.Cm.site <- filter(dat.1.Cm, site == loc)
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_", loc, ".rds"))
+loc <- "CI_IES"
+dat.1.Cm.site <- filter(dat.1.Cm, Macro_site == loc)
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", loc, ".rds"))
 
-loc.stats <- capture.recapture.stats(loc, dat.1.Cm.site, Cm.inputs, save.fig,
-                                     fig.height = fig.height, fig.width = fig.width)
+loc.stats <- capture.recapture.stats(loc, 
+                                     dat.1.Cm.site, 
+                                     save.fig,
+                                     fig.height = fig.height, 
+                                     fig.width = fig.width)
 
 CJS.data <- loc.stats$CJS.data
 n.occ <- loc.stats$n.occ
@@ -839,36 +842,45 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 ##### Mark {-}
 
 ```{r model_comp_IES, echo=F}
-Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_RMark_", loc, ".rds"))
+Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
 
-IES.models.df <- model.table(Cm.results.Mark) %>% 
-  select( model, DeltaAICc) %>% 
-  mutate(model = paren2bracket(model)) #%>%tilde12dot()
-```
+CI_IES.model.comp <- model.table(Cm.results.Mark)
+CI_IES.model.comp$Model <- paren2bracket(CI_IES.model.comp$model)
 
-```{r table-models-IES, echo=F, include=T}
-knitr::kable(IES.models.df, 
+knitr::kable(data.frame(ID = rownames(CI_IES.model.comp),
+                        model = CI_IES.model.comp$Model,
+                        deltaAICc = CI_IES.model.comp %>% select(DeltaAICc)), 
              digits = 2,
-             col.names = c("model", "DeltaAICc"),
+             col.names = c("ID", "model", "$\\Delta$AICc"),
+             escape = FALSE,
              row.names = F,
-             caption = paste0("Table. Model comparison for site ", loc),
+             caption = paste0("Model comparison for site ", loc),
              table.attr = "style='width:30%;'")
+
 ```
 
 
 ```{r parameter_estimates_IES, echo=F, warning=FALSE, message=FALSE}
-real.estimates <- Cm.results.Mark$Phi.tsm.p.t$results$real %>% rownames_to_column("parameter")
 
-N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates)
+real.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$real %>% 
+  rownames_to_column("parameter")
 
-# turn Nhats to NA when SE = 0 or SE > 1000
-#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
-plot.Nhats.Mark(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width)
+real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.tsm.effort$results$real %>% 
+  rownames_to_column("parameter")
+
+N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.1)
+N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.2)
+
+plot.Nhats.Mark(loc, 
+                Model.ID = "9",
+                N.Phi.p.hats.Mark.1, 
+                save.fig, fig.height, fig.width)
+
 
 ```
 
 
-Using the best model (Phi[tsm]p[t], Table \@ref(tab:table-models-IES)), the estimated mean survival rate of residents was `r signif(N.Phi.p.hats.Mark$Phihats[2,"estimate"], 3)` (SE = `r signif(N.Phi.p.hats.Mark$Phihats[2, "se"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.Mark$Phihats[2, "lcl"], 2)` - `r signif(N.Phi.p.hats.Mark$Phihats[2, "ucl"], 2)`]). 
+Using the best model (Phi[tsm]p[effort], Table \@ref(tab:table-models-IES)), the estimated mean survival rate of residents was `r signif(N.Phi.p.hats.Mark.1$Phihats[1,"estimate"], 3)` (SE = `r signif(N.Phi.p.hats.Mark$Phihats[1, "se"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.Mark$Phihats[1, "lcl"], 2)` - `r signif(N.Phi.p.hats.Mark$Phihats[1, "ucl"], 2)`]). 
 
 The proportion of residents was estimated to be `r signif(N.Phi.p.hats.Mark$Phihats[1,"estimate"]/N.Phi.p.hats.Mark$Phihats[2,"estimate"], 3)`, using the two survival rates (one for transients and residents and another for residents only). 
 
@@ -876,7 +888,7 @@ Estimated seasonal abundance fluctuated over time, which ranged from `r signif(m
 
 
 ```{r plot-Nhats-IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles including transients when the maximum likelihood approach and the Phi[tsm]p[t] model were used to analyze capture histories. Black filled circles indicate the means and error bars are 95% confidence intervals (CI)."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M9.png"))
 ```
 
 ##### Bayesian {-}

@@ -196,9 +196,11 @@ n.captures <- function(x){
 stats.Bayesian_v5 <- function(model.ID, Phi.spec, p.spec, loc){
   #models.MARK %>% filter(community == loc) %>% select(ID) -> model.ID
   
-  Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_v5_M", model.ID, "_", loc, ".rds"))
+  Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_v5_M", 
+                                      model.ID, "_", loc, ".rds"))
   
-  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_input_v5_M", model.ID,"_", loc, ".rds"))
+  Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_jags_input_v5_M", 
+                                     model.ID,"_", loc, ".rds"))
   
   Phi.par <- switch(Phi.spec,
                     "~1" = "mean.phi",

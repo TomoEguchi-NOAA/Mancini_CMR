@@ -551,43 +551,39 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 Estimates for the best model
 ```{r}
 loc <- "CL_BMA"
-Cm.results <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
+Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
 
-CL_BMA.models.df <- model.table(Cm.results)%>% 
-  select(model, DeltaAICc) %>% 
-  mutate(model = paren2bracket(model)) 
+CL_BMA.model.comp <- model.table(Cm.results.Mark)
+CL_BMA.model.comp$Model <- paren2bracket(CL_BMA.model.comp$model)
 
-# CL_BMA.models.df$Model <- paren2bracket(BKS.model.comp$model)
-# knitr::kable(CL_BMA.model.comp %>% select(Model, DeltaAICc), 
-#              digits = 2,
-#              col.names = c("Model", "DeltaAICc"),
-#              caption = paste0("Model comparison for ", loc),
-#              table.attr = "style='width:30%;'")
-```
-
-
-Six models were within $\delta$AICc < 4, where all of them included Phi[TSM]. The best model was Phi[TSM]p[.] (Table \@ref(tab:table-models-BMA)). 
-
-```{r table-models-BMA, echo=F, include=T, warning=FALSE, message=FALSE}
-knitr::kable(CL_BMA.models.df, 
+knitr::kable(data.frame(ID = rownames(CL_BMA.model.comp),
+                        model = CL_BMA.model.comp$Model,
+                        deltaAICc = CL_BMA.model.comp %>% select(DeltaAICc)), 
              digits = 2,
-             col.names = c("model", "deltaAICc"),
+             col.names = c("ID", "model", "$\\Delta$AICc"),
+             escape = FALSE,
              row.names = F,
              caption = paste0("Model comparison for site ", loc),
              table.attr = "style='width:30%;'")
+
+
 ```
+
+The best model was Phi[TSM]p[t] (Table \@ref(tab:table-models-BMA)). 
 
 
 ```{r parameter_estimates_BMA, echo=F}
 
-real.estimates <- Cm.results$Phi.tsm.p.dot$results$real %>% rownames_to_column("parameter")
+real.estimates <- Cm.results.Mark$Phi.tsm.p.t$results$real %>% 
+  rownames_to_column("parameter")
 
-N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, Cm.results, real.estimates)
-
-# turn Nhats to NA when SE = 0 or SE > 1000
-#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
-
-plot.Nhats.Mark(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width)
+N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, 
+                                   Cm.results.Mark, 
+                                   real.estimates)
+plot.Nhats.Mark(loc, 
+                Model.ID = "11",
+                N.Phi.p.hats.Mark, 
+                save.fig, fig.height, fig.width)
 
 ```
 
@@ -598,7 +594,7 @@ The proportion of residents was estimated to be `r signif(N.Phi.p.hats.Mark$Phih
 Estimated seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T),2)` to `r format(signif(max(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T), 5), big.mark = ",")` (Figure \@ref(fig:plot-Nhats-BMA)).
 
 ```{r plot-Nhats-BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles including transients at BMA when the maximum likelihood approach and the Phi[TSM]p[~1] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M11.png"))
 ```
 
 ##### Bayesian {-}
@@ -609,10 +605,14 @@ knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, ".png"))
 # v5 means the same data and model as what Mark selected
 #loc <- "BMA"
 
-N.Phi.hats.Jags <- stats.Bayesian_v5(rownames(CL_BMA.models.df)[1], loc)
+N.Phi.p.hats.Jags <- stats.Bayesian_v5(rownames(CL_BMA.model.comp)[1], 
+                                       Phi.spec = CL_BMA.model.comp[1, "Phi"],
+                                       p.spec = CL_BMA.model.comp[1, "p"],
+                                       loc)
 
 plot.Nhats.Jags(loc, 
-                N.Phi.hats.Jags, 
+                Model.ID = N.Phi.p.hats.Jags$Model.ID,
+                N.Phi.p.hats.Jags, 
                 save.fig, 
                 fig.height, 
                 fig.width, 
@@ -628,28 +628,26 @@ The proportion of residents was estimated to be `r signif(N.Phi.hats.Jags$Gammah
 Estimated mean seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 2)` to `r signif(max(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 3)` (Figure \@ref(fig:plot-Nhats-jags-v5-BMA)). These estimates were also similar to those from the ML approach (Figure \@ref(fig:plot-Nhats-comparison-BMA)).  
 
 ```{r plot-Nhats-jags-v5-BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles including transients at BMA when the Bayesian approach, the Phi[tsm]p[.] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_jags_v5.png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M11_jags_v5.png"))
 ```
 
 
 ```{r Nhats_comparison_BMA, echo=F, include=F}
 #Abundance estimates between the two models were similar?
-Nhats_comparison(loc, 
+Nhats_comparison(loc, "11", 
+                 N.Phi.p.hats.Jags$Model.ID,
                  N.Phi.p.hats.Mark, 
-                 N.Phi.hats.Jags, 
-                 save.fig,
+                 N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
 
-#p.Nhats.comparison
+
 ```
 
 
 ```{r plot-Nhats-comparison-BMA, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles at BMA using MLE (Mark) and the Bayesian approach and the Phi[tsm]p[.] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals (CI). The red line indicates y = x."}
-knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M11_M11.png"))
 ```
 
-
-These estimates (Mark and Jags) are very close to each other and I feel good about them! :)
 
 #### GNO {-}
 

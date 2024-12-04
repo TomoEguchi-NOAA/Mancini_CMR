@@ -77,6 +77,7 @@ plot.Nhats.Mark <- function(loc,
                             N.Phi.p.hats.Mark, 
                             save.fig, 
                             fig.height, fig.width){
+  
   p.Nhats <- ggplot(data = N.Phi.p.hats.Mark$Nhats) +
     geom_point(aes(x = season, y = (Nhat))) +
     geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +

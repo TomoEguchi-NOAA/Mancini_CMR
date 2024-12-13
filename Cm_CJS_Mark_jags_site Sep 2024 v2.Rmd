@@ -981,6 +981,7 @@ Nhats_comparison(loc, rownames(CI_IES.model.comp)[1],
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M9_M9.png"))
 ```
 
+START HERE 2024-12-13
 
 #### LSI {-}
 

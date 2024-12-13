@@ -209,8 +209,9 @@ stats.Bayesian_v5 <- function(model.ID, Phi.spec, p.spec, loc){
                     "~tsm" = "phi[")
   
   p.par <- switch(p.spec,
-                    "~1" = "mean.p",
-                    "~time" = "p[")
+                  "~1" = "mean.p",
+                  "~time" = "p[",
+                  "~effort" = "p[")
 
   real.estimates <- Cm.results$summary %>% 
     as.data.frame() %>% 

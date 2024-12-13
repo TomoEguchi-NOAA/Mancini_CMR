@@ -650,7 +650,7 @@ Nhats_comparison(loc, "11",
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M11_M11.png"))
 ```
 
-MLE appeared to overestimate some years. Precisions of abundance estimates were generally better in the Bayesian approach than for the MLE's. It is likely that a large portion of turtles in this area was transients. 
+MLE appeared to overestimate some years. Precision of abundance estimates were generally better in the Bayesian approach than for that of MLEs. It is likely that a large portion of turtles in this area was transients. 
 
 
 #### GNO {-}
@@ -723,8 +723,8 @@ real.estimates.1 <- Cm.results.Mark$Phi.dot.p.t$results$real %>%
 real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.t$results$real %>% 
   rownames_to_column("parameter")
 
-N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results, real.estimates.1)
-N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results, real.estimates.2)
+N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.1)
+N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.2)
 
 #plot.Nhats.Mark(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width)
 #plot.Nhats.Jags(loc, N.Phi.hats.Jags.TSM, save.fig, fig.height, fig.width, ext = "jags_TSM.png")
@@ -784,7 +784,7 @@ Compare Nhats from Mark and Jags:
 ```{r Nhats_comparison_GNO, echo=F, include=F}
 Nhats_comparison(loc, "4", 
                  N.Phi.p.hats.Jags$Model.ID,
-                 N.Phi.p.hats.Mark, 
+                 N.Phi.p.hats.Mark.1, 
                  N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
 ```
@@ -868,12 +868,55 @@ real.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$real %>%
 real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.tsm.effort$results$real %>% 
   rownames_to_column("parameter")
 
+beta.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$beta %>%
+  rownames_to_column("parameter")
+
+beta.estimates.1.p <- beta.estimates.1[grep("p:", beta.estimates.1$parameter),]
+beta.p <- beta.estimates.1.p$estimate
+lcl.p <- beta.estimates.1.p$lcl
+ucl.p <- beta.estimates.1.p$ucl
+
+X.beta <- cbind(1, unique(Cm.inputs$effort$effort)) %*% beta.p
+p.estimates <- exp(X.beta)/(1 + exp(X.beta)) # this should be identical to phats below
+p.intercept <- exp(beta.p[1])/(1 + exp(beta.p[1]))
+p.intercept.lcl <- exp(lcl.p[1])/(1 + exp(lcl.p[1]))
+p.intercept.ucl <- exp(ucl.p[1])/(1 + exp(ucl.p[1]))
+
+effort.phats.0 <- data.frame(effort = 0,
+                             phat.parameter = "p0",
+                             phat.estimate = p.intercept,
+                             phat.se = NA,
+                             phat.lcl = p.intercept.lcl,
+                             phat.ucl = p.intercept.ucl,
+                             phat.fixed = NA,
+                             phat.note = NA)
+
+# There are 18 unique effort values in the data. So, p has 18 estimates according
+# to the corresponding effort. 
+effort.phats <- data.frame(effort = unique(Cm.inputs$effort$effort),
+                           phat = real.estimates.1[grep("p", real.estimates.1$parameter),])
+
+# effort.phats <- rbind(effort.phats.0, 
+#                       data.frame(effort = unique(Cm.inputs$effort$effort),
+#                                  phat = real.estimates.1[grep("p", real.estimates.1$parameter),]))
+
+Cm.inputs$effort %>% 
+  left_join(effort.phats, by = "effort") %>%
+  left_join(data.frame(season = colnames(Cm.inputs$CJS.data$data),
+                       n.caught = colSums(Cm.inputs$CJS.data$data)),
+            by = "season") %>% 
+  mutate(Nhat = n.caught/phat.estimate,
+         lcl = n.caught/phat.ucl,
+         ucl = n.caught/phat.lcl,
+         lcl2 = ifelse(lcl < 0, 0, lcl)) -> p.hats.all
+
+p.hats.Mark <- list(Nhats = p.hats.all)
 N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.1)
 N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.2)
 
 plot.Nhats.Mark(loc, 
                 Model.ID = "9",
-                N.Phi.p.hats.Mark.1, 
+                p.hats.Mark, 
                 save.fig, fig.height, fig.width)
 
 
@@ -895,28 +938,39 @@ knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M9.png"))
 
 ```{r parameter_estimates_jags_v5_IES, echo=F, include=F}
 # v5 means the same data and model as what Mark selected
-#loc <- "IES"
-N.Phi.hats.Jags <- stats.Bayesian_v5(models.MARK.old, loc)
+N.Phi.p.hats.Jags <- stats.Bayesian_v5(rownames(CI_IES.model.comp)[1], 
+                                       Phi.spec = CI_IES.model.comp[1, "Phi"],
+                                       p.spec = CI_IES.model.comp[1, "p"],
+                                       loc)
 
-plot.Nhats.Jags(loc, N.Phi.hats.Jags, save.fig, fig.height, fig.width, ext = "jags_v5.png")
+plot.Nhats.Jags(loc, 
+                Model.ID = N.Phi.p.hats.Jags$Model.ID,
+                N.Phi.p.hats.Jags, 
+                save.fig, 
+                fig.height, 
+                fig.width, 
+                ext = "jags_v5.png")
 
-#format(signif(max(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 5), big.mark = ",")
+
 ```
 
-Using the best model (`r models.MARK.old %>% filter(site == loc) %>% select(model)`), the estimated mean survival rate of residents was `r signif(N.Phi.hats.Jags$Gammahats[2, "mean"], 3)` (SD = `r signif(N.Phi.hats.Jags$Gammahats[2, "sd"], 3)`, 95% CI = [`r signif(N.Phi.hats.Jags$Gammahats[2, "lcl"], 3)` - `r signif(N.Phi.hats.Jags$Gammahats[2, "ucl"], 2)`]), these estimates are similar to that from the ML approach (`r signif(N.Phi.p.hats.Mark$Phihats[2,"estimate"], 3)`).
+Using the best model (`r rownames(CI_IES.model.comp)[1]`), the estimated mean survival rate of residents was `r signif(N.Phi.hats.Jags$Gammahats[2, "mean"], 3)` (SD = `r signif(N.Phi.hats.Jags$Gammahats[2, "sd"], 3)`, 95% CI = [`r signif(N.Phi.hats.Jags$Gammahats[2, "lcl"], 3)` - `r signif(N.Phi.hats.Jags$Gammahats[2, "ucl"], 2)`]), these estimates are similar to that from the ML approach (`r signif(N.Phi.p.hats.Mark$Phihats[2,"estimate"], 3)`).
 
 The proportion of residents was estimated to be `r signif(N.Phi.hats.Jags$Gammahats[1, "mean"]/N.Phi.hats.Jags$Gammahats[2,"mean"], 3)`, which were less than that from the ML approach.  
 
 Estimated mean seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 2)` to `r signif(max(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 3)` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(plot-Nhats-jags-v5-IES)). These estimates were significantly lower than those from MARK (Figure \@ref(fig:plot-Nhats-comparison-IES)). Abundance estimates from the two approaches were quite different, where MLEs were generally greater (by 10x) than Bayesian estimates. I don't have confidence in these estimates. 
 
 ```{r plot-Nhats-jags-v5-IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles including transients at IES when the Bayesian approach, the Phi[TSM]p[t] model and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M9_jags_v5.png"))
 ```
 
 
 ```{r Nhats_comparison_IES, echo=F, include=F}
 #Abundance estimates between the two models were similar?
-Nhats_comparison(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
+Nhats_comparison(loc, rownames(CI_IES.model.comp)[1], 
+                 N.Phi.p.hats.Jags$Model.ID,
+                 p.hats.Mark, 
+                 N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
 
 #p.Nhats.comparison
@@ -924,7 +978,7 @@ Nhats_comparison(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
 
 
 ```{r plot-Nhats-comparison-IES, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles at IES using MLE (Mark) and the Bayesian approach and the Phi[tsm]p[t] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals (CI). The red line indicates y = x."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_comp_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M9_M9.png"))
 ```
 
 

@@ -25,6 +25,8 @@ source("Mancini_functions.R")
 save.fig <- F
 ```
 
+2024-12-16: Something is not quite right with data extraction and CJS input data creation. Double check the steps. 
+
 Bring in the data file and get ready for CJS. Some communities did not have large sample sizes (the number of captured turtles) in the starting phase. This caused some difficulties in estimating capture/recapture probabilities. So, after some frustrating days, I decided to remove these sampling periods, specifically for the beginning of each dataset. This had to be done manually. Selection of starting capture seasons is done in Cm_recaptures_Sept2024.Rmd:
 
 BKS = 2015-01
@@ -58,7 +60,7 @@ for (k in 1:length(site.names.used)){
   if (!file.exists(paste0("RData/CJS_Cm_2023_RMark_", site.names.used[k], ".rds"))){
 
     dat.1.Cm.site <- filter(dat.1.Cm, 
-                                 Macro_site == site.names.used[k]) 
+                            Macro_site == site.names.used[k]) 
     CJS.data <- dat2CJS(dat.1.Cm.site, 
                         save.file = FALSE)
     n.GT2.cap <- length(which(rowSums(CJS.data$data) > 1))

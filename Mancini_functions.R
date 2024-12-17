@@ -243,27 +243,58 @@ stats.Bayesian <- function(models.MARK, loc){
 extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
   data.0 <- Cm.inputs$CJS.data$data
   
-  phats <- real.estimates[grep("p", real.estimates$parameter),]
-  phihats <- real.estimates[grep("Phi", real.estimates$parameter),]
+  p.hats <- real.estimates[grep("p", real.estimates$parameter),]
+  phi.hats <- real.estimates[grep("Phi", real.estimates$parameter),]
   
-  phats[which(phats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
-  if (nrow(phats) == 1){
-    phats %>% slice(rep(1, each = (length(colnames(data.0))-1))) -> phats
+  p.hats[which(p.hats[,"estimate"] < 0.001), c("estimate", "se", "lcl", "ucl")] <- NA
+  if (nrow(p.hats) == 1){
+    p.hats %>% 
+      slice(rep(1, each = (length(colnames(data.0))-1))) %>%
+      mutate(season = colnames(data.0[1:(ncol(data.0)-1)]),
+             n.caught = colSums(data.0[,1:(ncol(data.0)-1)])) -> p.hats
+    
+  } else if (nrow(p.hats) != (ncol(data.0)-1)){  # When effort is affecting p
+    effort.p.hats <- data.frame(effort = unique(Cm.inputs$effort$effort),
+                               p.hat = real.estimates[grep("p", real.estimates$parameter),]) %>%
+      select(-c(p.hat.fixed, p.hat.note))
+    
+    Cm.inputs$effort %>% 
+      left_join(effort.p.hats, by = "effort") %>%
+      left_join(data.frame(season = colnames(Cm.inputs$CJS.data$data),
+                           n.caught = colSums(Cm.inputs$CJS.data$data)),
+                by = "season") %>% 
+      rename(parameter = p.hats.parameter,
+             estimate = p.hats.estimate,
+             se = p.hats.se,
+             lcl = p.hats.lcl,
+             ucl = p.hats.ucl) -> p.hats
+    
+  } else if (nrow(p.hats) == (ncol(data.0)-1)){
+    p.hats <- select(p.hats, -c(fixed, note)) %>%
+      mutate(season = colnames(data.0[1:(ncol(data.0)-1)]),
+             n.caught = colSums(data.0[,1:(ncol(data.0)-1)]))
   }
-  phats$season <- colnames(data.0)[1:(ncol(data.0)-1)]
   
-  n.caught <- colSums(data.0)
+  #phats$season <- colnames(data.0)[1:(ncol(data.0)-1)]
+  
+  #n.caught <- colSums(data.0)
   
   model.averaged.Phi <- model.average(Cm.results, parameter = "Phi")
   
-  Nhats.df <- data.frame(season = colnames(data.0)[1:(ncol(data.0)-1)],
-                         Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate) ) %>%
-    mutate(SE_Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate) * phats$se/phats$estimate,
-           #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
-           #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
-           lcl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  - 1.96 * SE_Nhat,
-           ucl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  + 1.96 * SE_Nhat,
-           lcl2 = ifelse(lcl < 0, 0, lcl))
+  p.hats %>% 
+    mutate(Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate),
+           SE_Nhat = (n.caught/estimate) * se/estimate,
+           lcl_Nhat = n.caught/ucl,
+           ucl_Nhat = n.caught/lcl) -> Nhats.df
+  
+  # Nhats.df <- data.frame(season = colnames(data.0)[1:(ncol(data.0)-1)],
+  #                        Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate) ) %>%
+  #   mutate(SE_Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate) * phats$se/phats$estimate,
+  #          #lcl  = (n.caught[2:length(n.caught)]/phats$lcl) * p.residents,
+  #          #ucl = (n.caught[2:length(n.caught)]/phats$ucl) * p.residents,
+  #          lcl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  - 1.96 * SE_Nhat,
+  #          ucl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  + 1.96 * SE_Nhat,
+  #          lcl2 = ifelse(lcl < 0, 0, lcl))
   
   out.list <- list(phats = phats,
                    Nhats = Nhats.df,

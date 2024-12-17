@@ -402,8 +402,8 @@ real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.t$results$real %>%
   rownames_to_column("parameter")
 
 N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, 
-                                   Cm.results.Mark, 
-                                   real.estimates.1)
+                                     Cm.results.Mark, 
+                                     real.estimates.1)
 
 N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, 
                                      Cm.results.Mark, 
@@ -868,29 +868,29 @@ real.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$real %>%
 real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.tsm.effort$results$real %>% 
   rownames_to_column("parameter")
 
-beta.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$beta %>%
-  rownames_to_column("parameter")
-
-beta.estimates.1.p <- beta.estimates.1[grep("p:", beta.estimates.1$parameter),]
-beta.p <- beta.estimates.1.p$estimate
-lcl.p <- beta.estimates.1.p$lcl
-ucl.p <- beta.estimates.1.p$ucl
-
-X.beta <- cbind(1, unique(Cm.inputs$effort$effort)) %*% beta.p
-p.estimates <- exp(X.beta)/(1 + exp(X.beta)) # this should be identical to phats below
-p.intercept <- exp(beta.p[1])/(1 + exp(beta.p[1]))
-p.intercept.lcl <- exp(lcl.p[1])/(1 + exp(lcl.p[1]))
-p.intercept.ucl <- exp(ucl.p[1])/(1 + exp(ucl.p[1]))
-
-effort.phats.0 <- data.frame(effort = 0,
-                             phat.parameter = "p0",
-                             phat.estimate = p.intercept,
-                             phat.se = NA,
-                             phat.lcl = p.intercept.lcl,
-                             phat.ucl = p.intercept.ucl,
-                             phat.fixed = NA,
-                             phat.note = NA)
-
+# beta.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$beta %>%
+#   rownames_to_column("parameter")
+# 
+# beta.estimates.1.p <- beta.estimates.1[grep("p:", beta.estimates.1$parameter),]
+# beta.p <- beta.estimates.1.p$estimate
+# lcl.p <- beta.estimates.1.p$lcl
+# ucl.p <- beta.estimates.1.p$ucl
+# 
+# X.beta <- cbind(1, unique(Cm.inputs$effort$effort)) %*% beta.p
+# p.estimates <- exp(X.beta)/(1 + exp(X.beta)) # this should be identical to phats below
+# p.intercept <- exp(beta.p[1])/(1 + exp(beta.p[1]))
+# p.intercept.lcl <- exp(lcl.p[1])/(1 + exp(lcl.p[1]))
+# p.intercept.ucl <- exp(ucl.p[1])/(1 + exp(ucl.p[1]))
+# 
+# effort.phats.0 <- data.frame(effort = 0,
+#                              phat.parameter = "p0",
+#                              phat.estimate = p.intercept,
+#                              phat.se = NA,
+#                              phat.lcl = p.intercept.lcl,
+#                              phat.ucl = p.intercept.ucl,
+#                              phat.fixed = NA,
+#                              phat.note = NA)
+# 
 # There are 18 unique effort values in the data. So, p has 18 estimates according
 # to the corresponding effort. 
 effort.phats <- data.frame(effort = unique(Cm.inputs$effort$effort),

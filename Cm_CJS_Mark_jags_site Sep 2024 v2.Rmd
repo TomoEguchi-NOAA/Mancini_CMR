@@ -753,6 +753,24 @@ Using the Phi[.]p[t] model, the survival rate was estimated to be `r signif(N.Ph
 
 Estimated seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T), 2)` to `r format(signif(max(N.Phi.p.hats.Mark.1$Nhats$Nhat, na.rm = T), 5), big.mark = ",")` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-GNO)).
 
+
+
+
+```{r parameter_estimates2_GNO, echo=F, warning=FALSE, message=FALSE}
+plot.Nhats.Mark(loc, 
+                Model.ID = "11",
+                N.Phi.p.hats.Mark.2, 
+                save.fig, fig.height, fig.width)
+
+
+```
+
+
+```{r plot-Nhats2-GNO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles at GNO when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M11.png"))
+```
+
+
 ##### Bayesian {-}
 
 ```{r parameter_estimates_jags_v5_GNO, echo=F, include=F}
@@ -904,19 +922,20 @@ Cm.inputs$effort %>%
   left_join(effort.phats, by = "effort") %>%
   left_join(data.frame(season = colnames(Cm.inputs$CJS.data$data),
                        n.caught = colSums(Cm.inputs$CJS.data$data)),
-            by = "season") %>% 
-  mutate(Nhat = n.caught/phat.estimate,
-         lcl = n.caught/phat.ucl,
-         ucl = n.caught/phat.lcl,
-         lcl2 = ifelse(lcl < 0, 0, lcl)) -> p.hats.all
+            by = "season") -> p.hats.all
 
-p.hats.Mark <- list(Nhats = p.hats.all)
+  # mutate(N.hats = n.caught/phat.estimate,
+  #        lcl_Nhat = n.caught/phat.ucl,
+  #        ucl_Nhat = n.caught/phat.lcl,
+  #        lcl2_Nhat = ifelse(lcl_Nhat < 0, 0, lcl_Nhat)) -> p.hats.all
+
+# p.hats.Mark <- list(Nhats = p.hats.all)
 N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.1)
-N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.2)
+# N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.2)
 
 plot.Nhats.Mark(loc, 
                 Model.ID = "9",
-                p.hats.Mark, 
+                N.Phi.p.hats.Mark.1, 
                 save.fig, fig.height, fig.width)
 
 
@@ -969,7 +988,7 @@ knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M9_jags_v5.png")
 #Abundance estimates between the two models were similar?
 Nhats_comparison(loc, rownames(CI_IES.model.comp)[1], 
                  N.Phi.p.hats.Jags$Model.ID,
-                 p.hats.Mark, 
+                 N.Phi.p.hats.Mark.1, 
                  N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
 
@@ -981,7 +1000,7 @@ Nhats_comparison(loc, rownames(CI_IES.model.comp)[1],
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M9_M9.png"))
 ```
 
-START HERE 2024-12-13
+START HERE 2024-12-20
 
 #### LSI {-}
 

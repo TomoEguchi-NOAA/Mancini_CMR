@@ -30,9 +30,9 @@ Nhats_comparison <- function(loc, Model.ID.Mark, Model.ID.Jags,
                       N_median_Jags = N.Phi.hats.Jags$Nhats$median,
                       N_lcl_Jags = N.Phi.hats.Jags$Nhats$lcl,
                       N_ucl_Jags = N.Phi.hats.Jags$Nhats$ucl,
-                      N_mean_Mark = c(N.Phi.p.hats.Mark$Nhats$Nhat, NA),
-                      N_lcl_Mark = c(N.Phi.p.hats.Mark$Nhats$lcl, NA),
-                      N_ucl_Mark = c(N.Phi.p.hats.Mark$Nhats$ucl, NA))
+                      N_mean_Mark = c(N.Phi.p.hats.Mark$N.hats$Nhat, NA),
+                      N_lcl_Mark = c(N.Phi.p.hats.Mark$N.hats$lcl_Nhat, NA),
+                      N_ucl_Mark = c(N.Phi.p.hats.Mark$N.hats$ucl_Nhat, NA))
   
   p.Nhats.comparison <- ggplot(data = Nhats) +
     geom_point(aes(x = N_mean_Jags, y = N_mean_Mark)) +
@@ -78,9 +78,9 @@ plot.Nhats.Mark <- function(loc,
                             save.fig, 
                             fig.height, fig.width){
   
-  p.Nhats <- ggplot(data = N.Phi.p.hats.Mark$Nhats) +
+  p.Nhats <- ggplot(data = N.Phi.p.hats.Mark$N.hats) +
     geom_point(aes(x = season, y = (Nhat))) +
-    geom_errorbar(aes(x = season, ymin = (lcl2), ymax = (ucl))) +
+    geom_errorbar(aes(x = season, ymin = (lcl_Nhat), ymax = (ucl_Nhat))) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
     ylab("Abundance (95% CI)") +
     labs(title = paste0(loc, " (MLE, Model ", Model.ID, ")"))
@@ -253,6 +253,8 @@ extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
       mutate(season = colnames(data.0[1:(ncol(data.0)-1)]),
              n.caught = colSums(data.0[,1:(ncol(data.0)-1)])) -> p.hats
     
+    
+    
   } else if (nrow(p.hats) != (ncol(data.0)-1)){  # When effort is affecting p
     effort.p.hats <- data.frame(effort = unique(Cm.inputs$effort$effort),
                                p.hat = real.estimates[grep("p", real.estimates$parameter),]) %>%
@@ -262,12 +264,12 @@ extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
       left_join(effort.p.hats, by = "effort") %>%
       left_join(data.frame(season = colnames(Cm.inputs$CJS.data$data),
                            n.caught = colSums(Cm.inputs$CJS.data$data)),
-                by = "season") %>% 
-      rename(parameter = p.hats.parameter,
-             estimate = p.hats.estimate,
-             se = p.hats.se,
-             lcl = p.hats.lcl,
-             ucl = p.hats.ucl) -> p.hats
+                by = "season") %>%
+      dplyr::rename(parameter = p.hat.parameter,
+                    estimate = p.hat.estimate,
+                    se = p.hat.se,
+                    lcl = p.hat.lcl,
+                    ucl = p.hat.ucl) -> p.hats
     
   } else if (nrow(p.hats) == (ncol(data.0)-1)){
     p.hats <- select(p.hats, -c(fixed, note)) %>%
@@ -282,10 +284,10 @@ extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
   model.averaged.Phi <- model.average(Cm.results, parameter = "Phi")
   
   p.hats %>% 
-    mutate(Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate),
+    mutate(Nhat = n.caught/p.hats$estimate,
            SE_Nhat = (n.caught/estimate) * se/estimate,
            lcl_Nhat = n.caught/ucl,
-           ucl_Nhat = n.caught/lcl) -> Nhats.df
+           ucl_Nhat = n.caught/lcl) -> N.hats.df
   
   # Nhats.df <- data.frame(season = colnames(data.0)[1:(ncol(data.0)-1)],
   #                        Nhat = (n.caught[1:(length(n.caught) - 1)]/phats$estimate) ) %>%
@@ -296,10 +298,10 @@ extract.Nhats <- function(Cm.inputs, Cm.results, real.estimates){
   #          ucl = (n.caught[1:(length(n.caught)-1)]/phats$estimate)  + 1.96 * SE_Nhat,
   #          lcl2 = ifelse(lcl < 0, 0, lcl))
   
-  out.list <- list(phats = phats,
-                   Nhats = Nhats.df,
-                   Phihats = phihats,
-                   Phihat_avg = model.averaged.Phi)
+  out.list <- list(p.hats = p.hats,
+                   N.hats = N.hats.df,
+                   Phi.hats = phi.hats,
+                   Phi.hat_avg = model.averaged.Phi)
   return(out.list)
 }
 

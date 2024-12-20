@@ -886,48 +886,14 @@ real.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$real %>%
 real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.tsm.effort$results$real %>% 
   rownames_to_column("parameter")
 
-# beta.estimates.1 <- Cm.results.Mark$Phi.tsm.p.effort$results$beta %>%
-#   rownames_to_column("parameter")
-# 
-# beta.estimates.1.p <- beta.estimates.1[grep("p:", beta.estimates.1$parameter),]
-# beta.p <- beta.estimates.1.p$estimate
-# lcl.p <- beta.estimates.1.p$lcl
-# ucl.p <- beta.estimates.1.p$ucl
-# 
-# X.beta <- cbind(1, unique(Cm.inputs$effort$effort)) %*% beta.p
-# p.estimates <- exp(X.beta)/(1 + exp(X.beta)) # this should be identical to phats below
-# p.intercept <- exp(beta.p[1])/(1 + exp(beta.p[1]))
-# p.intercept.lcl <- exp(lcl.p[1])/(1 + exp(lcl.p[1]))
-# p.intercept.ucl <- exp(ucl.p[1])/(1 + exp(ucl.p[1]))
-# 
-# effort.phats.0 <- data.frame(effort = 0,
-#                              phat.parameter = "p0",
-#                              phat.estimate = p.intercept,
-#                              phat.se = NA,
-#                              phat.lcl = p.intercept.lcl,
-#                              phat.ucl = p.intercept.ucl,
-#                              phat.fixed = NA,
-#                              phat.note = NA)
-# 
-# There are 18 unique effort values in the data. So, p has 18 estimates according
-# to the corresponding effort. 
 effort.phats <- data.frame(effort = unique(Cm.inputs$effort$effort),
                            phat = real.estimates.1[grep("p", real.estimates.1$parameter),])
-
-# effort.phats <- rbind(effort.phats.0, 
-#                       data.frame(effort = unique(Cm.inputs$effort$effort),
-#                                  phat = real.estimates.1[grep("p", real.estimates.1$parameter),]))
 
 Cm.inputs$effort %>% 
   left_join(effort.phats, by = "effort") %>%
   left_join(data.frame(season = colnames(Cm.inputs$CJS.data$data),
                        n.caught = colSums(Cm.inputs$CJS.data$data)),
             by = "season") -> p.hats.all
-
-  # mutate(N.hats = n.caught/phat.estimate,
-  #        lcl_Nhat = n.caught/phat.ucl,
-  #        ucl_Nhat = n.caught/phat.lcl,
-  #        lcl2_Nhat = ifelse(lcl_Nhat < 0, 0, lcl_Nhat)) -> p.hats.all
 
 # p.hats.Mark <- list(Nhats = p.hats.all)
 N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.1)
@@ -1000,151 +966,30 @@ Nhats_comparison(loc, rownames(CI_IES.model.comp)[1],
 knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M9_M9.png"))
 ```
 
-START HERE 2024-12-20
-
-#### LSI {-}
-
-```{r capture_history_LSI, echo=FALSE}
-loc <- "LSI"
-dat.1.Cm.site <- filter(dat.1.Cm, site == loc)
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_", loc, ".rds"))
-
-loc.stats <- capture.recapture.stats(loc, dat.1.Cm.site, Cm.inputs, save.fig,
-                                     fig.height = fig.height, fig.width = fig.width)
-
-CJS.data <- loc.stats$CJS.data
-n.occ <- loc.stats$n.occ
-n.caught <- loc.stats$n.caught
-n.caps <- loc.stats$n.caps
-
-```
-
-At `r loc`, there were `r nrow(CJS.data$data)` turtles in the dataset. However, the numbers of turtles caught per capture occasion before `r Cm.inputs$first.sample.date` were insufficient to include in CMR analyses and excluded (Figure \@ref(fig:plot-recap-n-LSI)). Consequently, the capture histories of `r nrow(Cm.inputs$CH.1)` individual turtles from `r Cm.inputs$first.sample.date` to `r max(dat.1.Cm.site$DATE)` were used in the analysis (Figure \@ref(fig:plot-Cap-His-LSI)). 
-
-
-```{r plot-recap-n-LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="The number of recaptures of green turtles at each capture occasion at LSI. "}
-knitr::include_graphics(paste0("figures/Cm_recaptures_", loc, ".png"))
-```
-
-There were `r ncol(Cm.inputs$CJS.data$data)` capture occasions and the number of captured turtles per capture occasion ranged from `r min(n.caught, na.rm = T)` to `r max(n.caught, na.rm = T)`. The number of captures per individual ranged from `r min(rowSums(CJS.data$data))` to `r max(rowSums(CJS.data$data))` with the median of `r median(rowSums(CJS.data$data))` and the mean of `r signif(mean(rowSums(CJS.data$data)), 2)` (Figure \@ref(fig:plot-Cap-n-LSI)). 
-
-
-```{r plot-Cap-His-LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Capture histories of tagged green turtles at LSI. Each filled circle indicates a capture event and the same individuals are connected by lines."}
-knitr::include_graphics(paste0("figures/Cm_capture_history_", loc, ".png"))
-```
-
-
-```{r plot-Cap-n-LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "The number of times individual green turtles were captured at LSI."}
-knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
-```
-
-##### Mark {-}
-
-```{r model_comp_LSI, echo=F}
-Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_RMark_", loc, ".rds"))
-
-LSI.models.df <- model.table(Cm.results.Mark)%>% select(model, DeltaAICc) %>% 
-  mutate(model = paren2bracket(model)) #%>%tilde12dot()
-```
-
-The best model was Phi[.]p[t]. The second best model (Phi[TSM]p[t]) was only `r signif(LSI.models.df[2, "DeltaAICc"], 2)` away from the best model. 
-
-```{r table-models-LSI, echo=F, include=T}
-knitr::kable(LSI.models.df, 
-             digits = 2,
-             col.names = c("model", "DeltaAICc"),
-             row.names = F,
-             caption = paste0("Table. Model comparison for site ", loc),
-             table.attr = "style='width:30%;'")
-```
-
-
-```{r parameter_estimates_LSI, echo=F, message=FALSE, warning=FALSE}
-real.estimates <- Cm.results.Mark$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
-
-N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates)
-
-# turn Nhats to NA when SE = 0 or SE > 1000
-#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 1000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
-p.LSI <- plot.Nhats.Mark(loc, 
-                         N.Phi.p.hats.Mark, 
-                         save.fig, 
-                         fig.height, 
-                         fig.width)
-
-# SEs are zeros for this place... Not worth analyzing. 
-```
-
-
-Using the best model (Phi[.]p[t], \@ref(tab:table-models-LSI)), the survival rate was estimated to be `r signif(N.Phi.p.hats.Mark$Phihats[1, "estimate"], 3)` (SE = `r signif(N.Phi.p.hats.Mark$Phihats[1, "se"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.Mark$Phihats[1, "lcl"], 2)` - `r signif(N.Phi.p.hats.Mark$Phihats[1, "ucl"], 2)`]). 
-
-Estimated seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T),2)` to `r signif(max(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T), 2)` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-LSI)).
-
-```{r parameter_estimate_TSMs_LSI, echo=F, message=FALSE, warning=FALSE}
-real.estimates <- Cm.results.Mark$Phi.tsm.p.t$results$real %>% rownames_to_column("parameter")
-
-N.Phi.p.hats.TSM.Mark <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates)
-
-```
-
-
-```{r plot-Nhats-LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles at LSI when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_Nhats_LSI.png"))
-```
-
-
-##### Bayesian {-}
-
-```{r parameter_estimates_jags_v5_LSI, echo=F, include=F}
-# v5 means the same data and model as what Mark selected
-#loc <- "LSI"
-N.Phi.hats.Jags <- stats.Bayesian_v5(models.MARK.old, loc)
-
-plot.Nhats.Jags(loc, 
-                N.Phi.hats.Jags, save.fig, fig.height, fig.width, ext = "jags_v5.png")
-
-#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
-```
-
-Using the best model (`r models.MARK.old %>% filter(site == loc) %>% select(model)`), the estimated mean survival rate was `r signif(N.Phi.hats.Jags$Phihats$mean, 3)` (SD = `r signif(N.Phi.hats.Jags$Phihats$sd, 3)`, 95% CI = [`r signif(N.Phi.hats.Jags$Phihats$lcl, 3)` - `r signif(N.Phi.hats.Jags$Phihats$ucl, 3)`]), which was less than the estimates from the ML approach.
-
-Estimated mean seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 2)` to `r signif(max(N.Phi.hats.Jags$Nhats$mean, na.rm = T), 3)` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-jags-v5-LSI)). These estimates were significantly lower than those from MARK (Figure \@ref(fig:plot-Nhats-comparison-LSI)). The comparison between estimates from Mark and Jags indicated they were quite different (Mark's estimates were greater than those from Jags). I would not use these estimates. 
-
-
-```{r plot-Nhats-jags-v5-LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles including transients at LSI when the Bayesian approach, the Phi[.]p[t] model and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)"}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
-```
-
-
-```{r Nhats_comparison_LSI, echo=F, include=F}
-#Abundance estimates between the two models were similar?
-Nhats_comparison(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
-                 fig.height, fig.width)
-
-#p.Nhats.comparison
-```
-
-
-```{r plot-Nhats-comparison-LSI, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles at LSI using MLE (Mark) and the Bayesian approach and the Phi[.]p[t] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals (CI). The red line indicates y = x."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_comp_", loc, ".png"))
-```
-
 #### MUL {-}
 
-```{r capture_history_MUL, echo=FALSE}
-loc <- "MUL"
-dat.1.Cm.site <- filter(dat.1.Cm, site == loc)
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_", loc, ".rds"))
+Probably not useful to include this site because of few recaptures.
 
-loc.stats <- capture.recapture.stats(loc, dat.1.Cm.site, Cm.inputs, save.fig,
-                                     fig.height = fig.height, fig.width = fig.width)
+```{r capture_history_LSI, echo=FALSE}
+loc <- "MUL"
+
+dat.1.Cm.site <- filter(dat.1.Cm, Macro_site == loc)
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", loc, ".rds"))
+
+loc.stats <- capture.recapture.stats(loc, 
+                                     dat.1.Cm.site, 
+                                     save.fig,
+                                     fig.height = fig.height, 
+                                     fig.width = fig.width)
 
 CJS.data <- loc.stats$CJS.data
 n.occ <- loc.stats$n.occ
 n.caught <- loc.stats$n.caught
 n.caps <- loc.stats$n.caps
 
+
 ```
+
 
 At `r loc`, there were `r nrow(CJS.data$data)` turtles in the dataset. However, the numbers of turtles caught per capture occasion before `r Cm.inputs$first.sample.date` were insufficient to include in CMR analyses and excluded (Figure \@ref(fig:plot-recap-n-MUL)). Consequently, the capture histories of `r nrow(Cm.inputs$CH.1)` individual turtles from `r Cm.inputs$first.sample.date` to `r max(dat.1.Cm.site$DATE)` were used in the analysis (Figure \@ref(fig:plot-Cap-His-MUL)). 
 
@@ -1169,30 +1014,52 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 ##### Mark {-}
 
 ```{r model_comp_MUL, echo=F}
-Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_RMark_", loc, ".rds"))
+Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
 
-MUL.models.df <- model.table(Cm.results.Mark)%>% select(model, DeltaAICc) %>% 
-  mutate(model = paren2bracket(model)) #%>%tilde12dot()
+MUL.model.comp <- model.table(Cm.results.Mark)
+MUL.model.comp$Model <- paren2bracket(MUL.model.comp$model)
+
+knitr::kable(data.frame(ID = rownames(MUL.model.comp),
+                        model = MUL.model.comp$Model,
+                        deltaAICc = MUL.model.comp %>% select(DeltaAICc)), 
+             digits = 2,
+             col.names = c("ID", "model", "$\\Delta$AICc"),
+             escape = FALSE,
+             row.names = F,
+             caption = paste0("Model comparison for site ", loc),
+             table.attr = "style='width:30%;'")
+
 ```
 
 Because of the few recaptures, I don't think it's meaningful to fit CMR models to these data... The model selection process shows that a lot of models were fit equally (\@ref(tab:table-models-MUL)). 
 
 
-```{r table-models-MUL, echo=F, include=T}
-knitr::kable(MUL.models.df, 
-             digits = 2,
-             col.names = c("model", "DeltaAICc"),
-             row.names = F,
-             caption = paste0("Table. Model comparison for site ", loc),
-             table.attr = "style='width:30%;'")
-```
-
 ```{r parameter_estimates_MUL, echo=F, message=FALSE, warning=FALSE}
-real.estimates <- Cm.results.Mark$Phi.dot.p.dot$results$real %>% rownames_to_column("parameter")
 
-N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates)
+real.estimates.1 <- Cm.results.Mark$Phi.dot.p.dot$results$real %>% 
+  rownames_to_column("parameter")
 
-plot.Nhats.Mark(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width)
+real.estimates.2 <- Cm.results.Mark$Phi.dot.p.effort$results$real %>% 
+  rownames_to_column("parameter")
+
+# effort.phats <- data.frame(effort = unique(Cm.inputs$effort$effort),
+#                            phat = real.estimates.1[grep("p", real.estimates.1$parameter),])
+# 
+# Cm.inputs$effort %>% 
+#   left_join(effort.phats, by = "effort") %>%
+#   left_join(data.frame(season = colnames(Cm.inputs$CJS.data$data),
+#                        n.caught = colSums(Cm.inputs$CJS.data$data)),
+#             by = "season") -> p.hats.all
+
+# p.hats.Mark <- list(Nhats = p.hats.all)
+N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.1)
+# N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.2)
+
+plot.Nhats.Mark(loc, 
+                Model.ID = "1",
+                N.Phi.p.hats.Mark.1, 
+                save.fig, fig.height, fig.width)
+
 
 ```
 
@@ -1202,7 +1069,7 @@ Using the best model, the survival rate was estimated to be `r signif(N.Phi.p.ha
 Estimated seasonal abundance fluctuated over time, which ranged from `r signif(min(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T),2)` to `r signif(max(N.Phi.p.hats.Mark$Nhats$Nhat, na.rm = T), 2)` with large uncertainty, which likely resulted from small numbers of recaptures (Figure \@ref(fig:plot-Nhats-MUL)).
 
 ```{r plot-Nhats-MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles at MUL when the maximum likelihood approach and the Phi[~1]p[~1] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M1.png"))
 ```
 
 I think these estimates are not very useful... given the few recaptures. 
@@ -1210,13 +1077,20 @@ I think these estimates are not very useful... given the few recaptures.
 ##### Bayesian {-}
 
 ```{r parameter_estimates_jags_v5_MUL, echo=F, include=F}
-# v5 means the same data and model as what Mark selected
-#loc <- "MUL"
-N.Phi.hats.Jags <- stats.Bayesian_v5(models.MARK.old, loc)
+N.Phi.p.hats.Jags <- stats.Bayesian_v5(rownames(MUL.model.comp)[1], 
+                                       Phi.spec = MUL.model.comp[1, "Phi"],
+                                       p.spec = MUL.model.comp[1, "p"],
+                                       loc)
 
-plot.Nhats.Jags(loc, N.Phi.hats.Jags, save.fig, fig.height, fig.width, ext = "jags_v5.png")
+plot.Nhats.Jags(loc, 
+                Model.ID = N.Phi.p.hats.Jags$Model.ID,
+                N.Phi.p.hats.Jags, 
+                save.fig, 
+                fig.height, 
+                fig.width, 
+                ext = "jags_v5.png")
 
-#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+
 ```
 
 Using the best model (`r models.MARK.old %>% filter(site == loc) %>% select(model)`), the estimated survival rate was `r signif(N.Phi.hats.Jags$Phihats$mean, 3)` (mean, SD = `r signif(N.Phi.hats.Jags$Phihats$sd, 3)`, 95% CI = [`r signif(N.Phi.hats.Jags$Phihats$lcl, 3)` - `r signif(N.Phi.hats.Jags$Phihats$ucl, 3)`]).
@@ -1225,21 +1099,23 @@ Estimated mean seasonal abundance fluctuated over time, which ranged from `r sig
  
 
 ```{r plot-Nhats-jags-v5-MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles at MUL when the Bayesian approach, the Phi[.]p[.] model, and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M1_jags_v5.png"))
 ```
 
 
 ```{r Nhats_comparison_MUL, echo=F, include=F}
 #Abundance estimates between the two models were similar?
-Nhats_comparison(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
+Nhats_comparison(loc, rownames(MUL.model.comp)[1], 
+                 N.Phi.p.hats.Jags$Model.ID,
+                 N.Phi.p.hats.Mark.1, 
+                 N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
 
-#p.Nhats.comparison
 ```
 
 
 ```{r plot-Nhats-comparison-MUL, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles at MUL using MLE (Mark) and the Bayesian approach and the Phi[.]p[.] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals (CI). The red line indicates y = x."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_comp_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M1_M1.png"))
 ```
 
 
@@ -1247,11 +1123,15 @@ knitr::include_graphics(paste0("figures/Cm_Nhats_comp_", loc, ".png"))
 
 ```{r capture_history_PAO, echo=FALSE}
 loc <- "PAO"
-dat.1.Cm.site <- filter(dat.1.Cm, site == loc)
-Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_RMark_input_", loc, ".rds"))
 
-loc.stats <- capture.recapture.stats(loc, dat.1.Cm.site, Cm.inputs, save.fig,
-                                     fig.height = fig.height, fig.width = fig.width)
+dat.1.Cm.site <- filter(dat.1.Cm, Macro_site == loc)
+Cm.inputs <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_input_", loc, ".rds"))
+
+loc.stats <- capture.recapture.stats(loc, 
+                                     dat.1.Cm.site, 
+                                     save.fig,
+                                     fig.height = fig.height, 
+                                     fig.width = fig.width)
 
 CJS.data <- loc.stats$CJS.data
 n.occ <- loc.stats$n.occ
@@ -1281,36 +1161,55 @@ knitr::include_graphics(paste0("figures/Cm_capture_histogram_", loc, ".png"))
 
 ##### Mark {-}
 ```{r model_comp_PAO, echo=F}
-Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_RMark_", loc, ".rds"))
+Cm.results.Mark <- readRDS(file = paste0("RData/CJS_Cm_2023_RMark_", loc, ".rds"))
 
-PAO.models.df <- model.table(Cm.results.Mark) %>% 
-  select(model, DeltaAICc) %>% 
-  mutate(model = paren2bracket(model)) #%>%tilde12dot()
-```
+PAO.model.comp <- model.table(Cm.results.Mark)
+PAO.model.comp$Model <- paren2bracket(PAO.model.comp$model)
 
-
-```{r table-models-PAO, echo=F, include=T}
-knitr::kable(PAO.models.df, 
+knitr::kable(data.frame(ID = rownames(PAO.model.comp),
+                        model = PAO.model.comp$Model,
+                        deltaAICc = PAO.model.comp %>% select(DeltaAICc)), 
              digits = 2,
-             col.names = c("model", "DeltaAICc"),
+             col.names = c("ID", "model", "$\\Delta$AICc"),
+             escape = FALSE,
              row.names = F,
-             caption = paste0("Table. Model comparison for site ", loc),
+             caption = paste0("Model comparison for site ", loc),
              table.attr = "style='width:30%;'")
+
 ```
+
 
 
 ```{r parameter_estimates_PAO, echo=F, message=FALSE, warning=FALSE}
+real.estimates.1 <- Cm.results.Mark$Phi.dot.p.t$results$real %>% 
+  rownames_to_column("parameter")
 
-real.estimates <- Cm.results.Mark$Phi.dot.p.t$results$real %>% rownames_to_column("parameter")
+real.estimates.2 <- Cm.results.Mark$Phi.tsm.p.t$results$real %>% 
+  rownames_to_column("parameter")
 
-N.Phi.p.hats.Mark <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates)
+# effort.phats <- data.frame(effort = unique(Cm.inputs$effort$effort),
+#                            phat = real.estimates.1[grep("p", real.estimates.1$parameter),])
+# 
+# Cm.inputs$effort %>% 
+#   left_join(effort.phats, by = "effort") %>%
+#   left_join(data.frame(season = colnames(Cm.inputs$CJS.data$data),
+#                        n.caught = colSums(Cm.inputs$CJS.data$data)),
+#             by = "season") -> p.hats.all
 
-# turn Nhats to NA when SE = 0 or SE > 1000
-#Nhats.df[Nhats.df$SE_Nhat < 0.001 | Nhats.df$SE_Nhat > 5000, c("Nhat", "lcl", "ucl", "lcl2")] <- NA
-plot.Nhats.Mark(loc, N.Phi.p.hats.Mark, save.fig, fig.height, fig.width)
+# p.hats.Mark <- list(Nhats = p.hats.all)
+N.Phi.p.hats.Mark.1 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.1)
+N.Phi.p.hats.Mark.2 <- extract.Nhats(Cm.inputs, Cm.results.Mark, real.estimates.2)
+
+plot.Nhats.Mark(loc, 
+                Model.ID = "4",
+                N.Phi.p.hats.Mark.1, 
+                save.fig, fig.height, fig.width)
+
 
 ```
 
+
+Estimated SEs are all zeros... :( 
 
 Using the best model (Table \@ref(tab:table-models-PAO)), the survival rate was estimated to be `r signif(N.Phi.p.hats.Mark$Phihats[1,"estimate"], 3)` (SE = `r signif(N.Phi.p.hats.Mark$Phihats[1, "se"], 3)`, 95% CI = [`r signif(N.Phi.p.hats.Mark$Phihats[1, "lcl"], 2)` - `r signif(N.Phi.p.hats.Mark$Phihats[1, "ucl"], 2)`]). 
 
@@ -1318,19 +1217,27 @@ Estimated seasonal abundance fluctuated over time, which ranged from `r signif(m
 
 
 ```{r plot-Nhats-PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles at PAO when the maximum likelihood approach and the Phi[~1]p[t] model were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% confidence intervals (CI)."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M4.png"))
 ```
 
 ##### Bayesian {-}
 
 ```{r parameter_estimates_jags_v5_PAO, echo=F, include=F}
 # v5 means the same data and model as what Mark selected
-#loc <- "PAO"
-N.Phi.hats.Jags <- stats.Bayesian_v5(models.MARK.old, loc)
+N.Phi.p.hats.Jags <- stats.Bayesian_v5(rownames(PAO.model.comp)[1], 
+                                       Phi.spec = PAO.model.comp[1, "Phi"],
+                                       p.spec = PAO.model.comp[1, "p"],
+                                       loc)
 
-plot.Nhats.Jags(loc, N.Phi.hats.Jags, save.fig, fig.height, fig.width, ext = "jags_v5.png")
+plot.Nhats.Jags(loc, 
+                Model.ID = N.Phi.p.hats.Jags$Model.ID,
+                N.Phi.p.hats.Jags, 
+                save.fig, 
+                fig.height, 
+                fig.width, 
+                ext = "jags_v5.png")
 
-#format(signif(max(N.Phi.hats$Nhats$mean, na.rm = T), 5), big.mark = ",")
+
 ```
 
 Using the best model (`r models.MARK.old %>% filter(site == loc) %>% select(model)`), the estimated mean survival rate was `r signif(N.Phi.hats.Jags$Phihats$mean, 3)` (SD = `r signif(N.Phi.hats.Jags$Phihats$sd, 3)`, 95% CI = [`r signif(N.Phi.hats.Jags$Phihats$lcl, 3)` - `r signif(N.Phi.hats.Jags$Phihats$ucl, 3)`]).
@@ -1341,21 +1248,22 @@ The comparison between estimates from Mark and Jags indicated they were quite di
 
 
 ```{r plot-Nhats-jags-v5-PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap="Estimated abundance of green turtles at PAO when the Bayesian approach, the Phi[~1]p[t] model and the same data as in the maximum likelihood approach were used to analyze capture histories. Filled circles indicate means and error bars indicate 95% credible intervals (CI)."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_", loc, "_jags_v5.png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_", loc, "_M4_jags_v5.png"))
 ```
 
 
 ```{r Nhats_comparison_PAO, echo=F, include=F}
 #Abundance estimates between the two models were similar?
-Nhats_comparison(loc, N.Phi.p.hats.Mark, N.Phi.hats.Jags, save.fig,
+Nhats_comparison(loc, rownames(PAO.model.comp)[1], 
+                 N.Phi.p.hats.Jags$Model.ID,
+                 N.Phi.p.hats.Mark.1, 
+                 N.Phi.p.hats.Jags, save.fig,
                  fig.height, fig.width)
-
-#p.Nhats.comparison
 ```
 
 
 ```{r plot-Nhats-comparison-PAO, echo=FALSE, cache=TRUE, warning = FALSE, message = FALSE, fig.cap = "Estimated abundance of green turtles at PAO using MLE (Mark) and the Bayesian approach and the Phi[.]p[t] model. Filled circles indicate means and error bars indicate 95% credible or confidence intervals (CI). The red line indicates y = x."}
-knitr::include_graphics(paste0("figures/Cm_Nhats_comp_", loc, ".png"))
+knitr::include_graphics(paste0("figures/Cm_2023_Nhats_comp_", loc, "_M4_M4.png"))
 ```
 
 
